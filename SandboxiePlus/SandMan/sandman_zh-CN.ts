@@ -1809,7 +1809,7 @@ No will choose: %2</source>
     <message>
         <location filename="Views/SbieView.cpp" line="76"/>
         <source>Windows Explorer</source>
-        <translation type="unfinished">Windows 文件资源浏览器</translation>
+        <translation>Windows 文件资源浏览器</translation>
     </message>
     <message>
         <location filename="Views/SbieView.cpp" line="77"/>
@@ -2514,17 +2514,17 @@ No will choose: %2</source>
     <message>
         <location filename="Forms/OptionsWindow.ui" line="271"/>
         <source>Allow MSIServer to run with a sandboxed system token and apply other exceptions if required</source>
-        <translation type="unfinished"></translation>
+        <translation>如果遇到其他异常请允许MSI Server使用沙箱系统令牌运行</translation>
     </message>
     <message>
         <location filename="Forms/OptionsWindow.ui" line="278"/>
         <source>Note: Msi Installer Exemptions should not be required, but if you encounter issues installing a msi package which you trust, this option may help the installation complete successfully. You can also try disabling drop admin rights.</source>
-        <translation type="unfinished"></translation>
+        <translation>注意:不应豁免Msi安装程序的请求,但是如果在安装一个你信任的Msi包时遇到问题,这个选项可以帮助安装成功完成。你也可以尝试禁用管理员的权限。</translation>
     </message>
     <message>
         <location filename="Forms/OptionsWindow.ui" line="449"/>
         <source>Access Restrictions</source>
-        <translation type="unfinished"></translation>
+        <translation>访问限制</translation>
     </message>
     <message>
         <location filename="Forms/OptionsWindow.ui" line="618"/>

@@ -161,7 +161,8 @@ _FX void Mem_FreeLockResource(PERESOURCE *ppResource)
 //
 //---------------------------------------------------------------------------
 
-#ifndef _WIN64
+#ifndef _WIN64 
+#if _MSC_VER < 1920
 int __cdecl memcmp(
 	_In_reads_bytes_(_Size) void const* _Buf1,
 	_In_reads_bytes_(_Size) void const* _Buf2,
@@ -170,5 +171,6 @@ int __cdecl memcmp(
 {
 	return (RtlCompareMemory(_Buf1, _Buf2, _Size) == _Size) ? 0 : 1;
 }
+#endif
 #endif
 
