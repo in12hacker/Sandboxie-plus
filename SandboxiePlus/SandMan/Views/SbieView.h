@@ -19,13 +19,11 @@ public:
 	//virtual void				UpdateRunMenu();
 
 	virtual QString				AddNewBox();
+	virtual QString				AddNewGroup();
 	virtual void				SelectBox(const QString& Name);
 
 	virtual void				PopUpMenu(const QString& Name);
 	virtual void				ShowOptions(const QString& Name);
-
-signals:
-	void						RecoveryRequested(const QString& BoxName);
 
 public slots:
 	void						Clear();
@@ -77,9 +75,11 @@ private:
 	QAction*				m_pMenuRunMenu;
 	QAction*				m_pMenuRunBrowser;
 	QAction*				m_pMenuRunMailer;
+	QMenu*					m_pMenuRunTools;
 	QAction*				m_pMenuRunExplorer;
 	QAction*				m_pMenuRunRegEdit;
 	QAction*				m_pMenuRunAppWiz;
+	QAction*				m_pMenuAutoRun;
 	QAction*				m_pMenuRunCmd;
 	QAction*				m_pMenuRunCmdAdmin;
 	QAction*				m_pMenuRunCmd32;
@@ -94,7 +94,10 @@ private:
 	QAction*				m_pMenuOptions;
 	QAction*				m_pMenuSnapshots;
 	QAction*				m_pMenuEmptyBox;
+	QMenu*					m_pMenuContent;
 	QAction*				m_pMenuExplore;
+	QAction*				m_pMenuBrowse;
+	QAction*				m_pMenuRegEdit;
 	QAction*				m_pMenuRecover;
 	QAction*				m_pMenuCleanUp;
 	QAction*				m_pMenuRemove;
