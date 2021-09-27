@@ -291,6 +291,8 @@ extern BOOLEAN Ipc_OpenCOM;
 
 extern const WCHAR *Scm_CryptSvc;
 
+extern BOOLEAN Dll_SbieTrace;
+
 
 //---------------------------------------------------------------------------
 // DLL Name Variables
@@ -731,15 +733,11 @@ BOOLEAN Proc_Init_AdvPack(HMODULE);
 
 BOOLEAN Custom_SilverlightAgCore(HMODULE);
 
-BOOLEAN Custom_MsgPlusLive(HMODULE);
-
 BOOLEAN Custom_OsppcDll(HMODULE);
 
 BOOLEAN Custom_InternetDownloadManager(HMODULE);
 
 BOOLEAN Custom_Avast_SnxHk(HMODULE);
-
-BOOLEAN Custom_EMET_DLL(HMODULE hmodule);
 
 BOOLEAN Custom_SYSFER_DLL(HMODULE hmodule);
 

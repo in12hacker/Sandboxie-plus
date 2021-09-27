@@ -90,6 +90,8 @@ CRITICAL_SECTION  VT_CriticalSection;
 
 const UCHAR *SbieDll_Version = MY_VERSION_COMPAT;
 
+BOOLEAN Dll_SbieTrace = FALSE;
+
 //extern ULONG64 __security_cookie = 0;
 
 
@@ -218,6 +220,8 @@ _FX void Dll_InitInjected(void)
 	ULONG BoxKeyPathLen;
 	ULONG BoxIpcPathLen;
 
+    Dll_SbieTrace = SbieApi_QueryConfBool(NULL, L"SbieTrace", FALSE);
+
 	if (SbieApi_QueryConfBool(NULL, L"DebugTrace", FALSE)) {
 
 		Trace_Init();
@@ -240,7 +244,7 @@ _FX void Dll_InitInjected(void)
 
     Dll_ProcessId = (ULONG)(ULONG_PTR)GetCurrentProcessId();
 
-    status = SbieApi_QueryProcessEx2(
+    status = SbieApi_QueryProcessEx2( // sets proc->sbiedll_loaded = TRUE; in the driver
         (HANDLE)(ULONG_PTR)Dll_ProcessId, 255,
         Dll_BoxNameSpace, Dll_ImageNameSpace, Dll_SidStringSpace,
         &Dll_SessionId, NULL);
@@ -333,10 +337,20 @@ _FX void Dll_InitInjected(void)
         // (for AutoExec function in custom module)
         //
 
-        ULONG *pids = Dll_AllocTemp(2048);
-        if (SbieApi_EnumProcess(NULL, pids) == 0 && pids[0] == 1)
+        ULONG pid_count = 0;
+        if (NT_SUCCESS(SbieApi_EnumProcessEx(NULL,FALSE,-1,NULL,&pid_count)) && pid_count == 1)
             Dll_FirstProcessInBox = TRUE;
-        Dll_Free(pids);
+
+        WCHAR str[32];
+        if (NT_SUCCESS(SbieApi_QueryConfAsIs(NULL, L"ProcessLimit", 0, str, sizeof(str) - sizeof(WCHAR)))) {
+            ULONG num = _wtoi(str);
+            if (num > 0) {
+                if (num < pid_count)
+                    ExitProcess(-1);
+                if ((num * 8 / 10) < pid_count)
+                    Sleep(3000);
+            }
+        }
     }
 
     if (ok) {
@@ -706,14 +720,17 @@ _FX ULONG_PTR Dll_Ordinal1(
 {
     struct _INJECT_DATA {           // keep in sync with core/low/inject.c
 
-        ULONG64 sbielow_data;
-        ULONG64 RtlFindActCtx_SavedArg1;
-        ULONG64 x1;
-        ULONG64 x2;
+        ULONG64 sbielow_data;               // syscall_data_len & extra_data_offset;
+        ULONG64 RtlFindActCtx_SavedArg1;    // LdrLoadDll
+
+        ULONG64 LdrGetProcAddr;
+        ULONG64 NtRaiseHardError;
         ULONG64 RtlFindActCtx;
         ULONG   RtlFindActCtx_Protect;
+        
+        UCHAR   Reserved[188];              // the rest of _INJECT_DATA
 
-    } *inject;
+    } *inject; // total size 232
 
     typedef ULONG_PTR (*P_RtlFindActivationContextSectionString)(
                     ULONG_PTR arg1, ULONG_PTR arg2, ULONG_PTR arg3,
@@ -737,13 +754,13 @@ _FX ULONG_PTR Dll_Ordinal1(
 
     data = (SBIELOW_DATA *)inject->sbielow_data;
 
-    bHostInject = data->bHostInject == 1;
+    bHostInject = data->flags.bHostInject == 1;
 
     //
     // the SbieLow data area includes values that are useful to us
     //
 
-    Dll_IsWow64 = data->is_wow64;
+    Dll_IsWow64 = data->flags.is_wow64 == 1;
 
     SbieApi_DeviceHandle = (HANDLE)data->api_device_handle;
 

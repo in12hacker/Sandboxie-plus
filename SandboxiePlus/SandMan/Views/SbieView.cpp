@@ -46,7 +46,6 @@ CSbieView::CSbieView(QWidget* parent) : CPanelView(parent)
 	m_pSbieTree->setSelectionMode(QAbstractItemView::ExtendedSelection);
 	m_pSbieTree->setSortingEnabled(true);
 	//m_pSbieTree->setSortingEnabled(false);
-	m_pSbieTree->setUniformRowHeights(true);
 	//m_pSbieTree->header()->setSortIndicatorShown(true);
 	//m_pSbieTree->header()->setSectionsClickable(true);
 	connect(m_pSbieTree->header(), SIGNAL(sectionClicked(int)), this, SLOT(OnCustomSortByColumn(int)));
@@ -611,6 +610,8 @@ void CSbieView::OnGroupAction()
 
 		// todo: fix behavioure on multiple selelction
 		foreach(const QString& Name, GetSelectedGroups(true)) {
+			bool bFound = false;
+			retry:
 			for (auto I = m_Groups.begin(); I != m_Groups.end(); ++I) {
 				int pos = I->indexOf(Name);
 				if (pos != -1) {
@@ -619,8 +620,14 @@ void CSbieView::OnGroupAction()
 						I.value()[pos+Offset] = I.value()[pos];
 						I.value()[pos] = Temp;
 					}
+					bFound = true;
 					break;
 				}
+			}
+			if (!bFound) {
+				bFound = true;
+				m_Groups[""].prepend(Name);
+				goto retry;
 			}
 		}
 	}
@@ -767,6 +774,11 @@ void CSbieView::OnSandBoxAction(QAction* Action)
 	}
 	else if (Action == m_pMenuBrowse)
 	{
+		if (SandBoxes.first()->IsEmpty()) {
+			QMessageBox("Sandboxie-Plus", tr("This Sandbox is empty."), QMessageBox::Information, QMessageBox::Ok, QMessageBox::NoButton, QMessageBox::NoButton, this).exec();
+			return;
+		}
+
 		CSandBoxPtr pBox = SandBoxes.first();
 		
 		static QMap<void*, CFileBrowserWindow*> FileBrowserWindows;

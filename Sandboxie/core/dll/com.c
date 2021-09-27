@@ -251,6 +251,7 @@ P_WindowsGetStringRawBuffer __sys_WindowsGetStringRawBuffer = NULL;
 // Variables
 //---------------------------------------------------------------------------
 
+BOOLEAN Ipc_OpenCOM = FALSE;
 
 static ULONG Com_NumOpenClsids = -1;
 static GUID *Com_OpenClsids = NULL;
@@ -583,7 +584,7 @@ _FX HRESULT Com_CoGetClassObject(
         return E_ACCESSDENIED;
     }
 
-    if ((! pServerInfo) && SbieDll_IsOpenClsid(rclsid, clsctx, NULL)) {
+    if (!Ipc_OpenCOM && (! pServerInfo) && SbieDll_IsOpenClsid(rclsid, clsctx, NULL)) {
 
         hr = Com_IClassFactory_New(rclsid, NULL, ppv);
 
@@ -623,10 +624,12 @@ _FX HRESULT Com_CoGetObject(
     ULONG monflag = 0;
     BOOLEAN IsOpenClsid = FALSE;
 
-    if (_wcsnicmp(pszName, L"Elevation:Administrator!new:", 28) == 0) {
-        if (__sys_IIDFromString(pszName + 28, &clsid) == 0) {
-            if (SbieDll_IsOpenClsid(&clsid, CLSCTX_LOCAL_SERVER, NULL))
-                IsOpenClsid = TRUE;
+    if (!Ipc_OpenCOM) {
+        if (_wcsnicmp(pszName, L"Elevation:Administrator!new:", 28) == 0) {
+            if (__sys_IIDFromString(pszName + 28, &clsid) == 0) {
+                if (SbieDll_IsOpenClsid(&clsid, CLSCTX_LOCAL_SERVER, NULL))
+                    IsOpenClsid = TRUE;
+            }
         }
     }
 
@@ -677,7 +680,7 @@ _FX HRESULT Com_CoCreateInstance(
         return E_ACCESSDENIED;
     }
 
-    if (SbieDll_IsOpenClsid(rclsid, clsctx, NULL)) {
+    if (!Ipc_OpenCOM && SbieDll_IsOpenClsid(rclsid, clsctx, NULL)) {
 
         hr = Com_IClassFactory_New(rclsid, NULL, (void **)&pFactory);
 
@@ -765,7 +768,7 @@ _FX HRESULT Com_CoCreateInstanceEx(
     // otherwise normal processing
     //
 
-    if (SbieDll_IsOpenClsid(rclsid, clsctx, NULL)) {
+    if (!Ipc_OpenCOM && SbieDll_IsOpenClsid(rclsid, clsctx, NULL)) {
 
         hr = Com_IClassFactory_New(rclsid, NULL, (void **)&pFactory);
         if (SUCCEEDED(hr)) {
@@ -1343,17 +1346,23 @@ _FX BOOLEAN Com_Init_ComBase(HMODULE module)
     GETPROCADDR_SYS(CoTaskMemAlloc);
     GETPROCADDR_SYS(IIDFromString);
 
-    if (!SbieDll_IsOpenCOM()) {
+    if (SbieDll_IsOpenCOM()
+    // DisableComProxy BEGIN
+    || SbieApi_QueryConfBool(NULL, L"DisableComProxy", FALSE))
+    // DisableComProxy END
+        Ipc_OpenCOM = TRUE;
+    
+    
+    SBIEDLL_HOOK(Com_, CoGetClassObject);
+    if (!Dll_SkipHook(L"cocreate")) {
+        SBIEDLL_HOOK(Com_, CoCreateInstance);
+        SBIEDLL_HOOK(Com_, CoCreateInstanceEx);
+    }
 
-        SBIEDLL_HOOK(Com_, CoGetClassObject);
-        if (!Dll_SkipHook(L"cocreate")) {
-            SBIEDLL_HOOK(Com_, CoCreateInstance);
-            SBIEDLL_HOOK(Com_, CoCreateInstanceEx);
-        }
-
+    if (!Ipc_OpenCOM) {
         if (Dll_OsBuild >= 8400) {
             if (!Com_Hook_CoUnmarshalInterface_W8(
-                (UCHAR *)CoUnmarshalInterface))
+                (UCHAR*)CoUnmarshalInterface))
                 return FALSE;
         }
         else {
@@ -1372,12 +1381,10 @@ _FX BOOLEAN Com_Init_ComBase(HMODULE module)
         }
     }
 
-    {
-        // If there are any ClsidTrace options set, then output this debug string
-        WCHAR wsTraceOptions[4];
-        if (SbieApi_QueryConf(NULL, L"ClsidTrace", 0, wsTraceOptions, sizeof(wsTraceOptions)) == STATUS_SUCCESS && wsTraceOptions[0] != L'\0')
-            Com_TraceFlag = TRUE;
-    }
+    // If there are any ClsidTrace options set, then output this debug string
+    WCHAR wsTraceOptions[4];
+    if (SbieApi_QueryConf(NULL, L"ClsidTrace", 0, wsTraceOptions, sizeof(wsTraceOptions)) == STATUS_SUCCESS && wsTraceOptions[0] != L'\0')
+        Com_TraceFlag = TRUE;
 
     return TRUE;
 }
@@ -1408,10 +1415,7 @@ _FX BOOLEAN Com_Init_Ole32(HMODULE module)
     // other functions are still in ole32, even on Windows 8
     //
 
-    if (! SbieDll_IsOpenCOM()) {
-
-        SBIEDLL_HOOK(Com_,CoGetObject);
-    }
+    SBIEDLL_HOOK(Com_,CoGetObject);
 
     return TRUE;
 }
