@@ -217,7 +217,7 @@ _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 	WCHAR* path = NULL;
 	BOOLEAN path_home;
 	STREAM* stream;
-
+    conf_data->box_list = NULL;
 	//
 	// allocate a buffer large enough for \SystemRoot\rule.json
 	// or (Home Path)\rule.json
