@@ -25,7 +25,6 @@
 
 
 #include "driver.h"
-#include "cJSON.h"
 
 //---------------------------------------------------------------------------
 // Defines
@@ -74,6 +73,12 @@ void Conf_AdjustUseCount(BOOLEAN increase);
 
 const WCHAR *Conf_Get(
     const WCHAR *section, const WCHAR *setting, ULONG index);
+
+// Json_Conf_Get:  returns a pointer to json configuration data.  use
+// with Conf_AdjustUseCount to make sure the returned pointer is valid
+
+cJSON* Json_Conf_Get(
+    const WCHAR* section, const WCHAR* setting);
 
 
 // Conf_Get_Boolean:  parses a y/n setting.  this function does not

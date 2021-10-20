@@ -38,7 +38,7 @@
 // Defines
 //---------------------------------------------------------------------------
 
-//#define USE_CONF_MAP
+#define USE_CONF_MAP
 
 #define CONF_LINE_LEN               2000        // keep in sync with sbieiniwire.h
 #define CONF_MAX_LINES              100000      // keep in sync with sbieiniwire.h
@@ -202,8 +202,10 @@ _FX void Conf_AdjustUseCount(BOOLEAN increase)
 
 
 //---------------------------------------------------------------------------
-// Conf_Read
+// Json_Conf_Read
 //---------------------------------------------------------------------------
+
+
 _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 {
 	static const WCHAR* path_rulejson = L"%s\\rule.json";
@@ -282,6 +284,11 @@ _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 
 	return status;
 }
+
+
+//---------------------------------------------------------------------------
+// Conf_Read
+//---------------------------------------------------------------------------
 
 
 _FX NTSTATUS Conf_Read(ULONG session_id)
@@ -1334,6 +1341,61 @@ _FX const WCHAR *Conf_Get(
     KeLowerIrql(irql);
 
     return value;
+}
+
+
+//---------------------------------------------------------------------------
+// Json_Conf_Get
+//---------------------------------------------------------------------------
+
+
+_FX cJSON* Json_Conf_Get(const WCHAR* section, const WCHAR* setting)
+{
+	cJSON* value;
+	BOOLEAN have_section;
+	BOOLEAN have_setting;
+	BOOLEAN check_global;
+	BOOLEAN skip_tmpl;
+	KIRQL irql;
+
+	value = NULL;
+	have_section = (section && section[0]);
+	have_setting = (setting && setting[0]);
+
+	KeRaiseIrql(APC_LEVEL, &irql);
+	ExAcquireResourceSharedLite(Conf_Lock, TRUE);
+
+	if (Conf_Data.box_list)
+	{
+		int len = cJSON_GetArraySize(Conf_Data.box_list);
+		for (int i = 0; i < len; i++)
+		{
+			cJSON* boxItem = cJSON_GetArrayItem(Conf_Data.box_list, i);
+			cJSON* boxName = cJSON_GetObjectItem(boxItem, "boxname");
+			char* name = boxName->string;
+			if (name)
+			{
+				ANSI_STRING ani_temp;
+				RtlInitAnsiString(&ani_temp, name);
+				UNICODE_STRING uni;
+				RtlAnsiStringToUnicodeString(&uni, &ani_temp, TRUE);
+				if (wcscmp(uni.Buffer, section) == 0)
+				{
+                    ANSI_STRING ani;
+                    UNICODE_STRING uni_temp;
+                    RtlInitUnicodeString(&uni_temp, setting);
+                    RtlUnicodeStringToAnsiString(&ani, &uni_temp, TRUE);
+                    value = cJSON_GetObjectItem(boxItem, ani.Buffer);
+                    RtlFreeAnsiString(&ani);
+				}
+				RtlFreeUnicodeString(&uni);
+			}
+		}
+	}
+	ExReleaseResourceLite(Conf_Lock);
+	KeLowerIrql(irql);
+
+	return value;
 }
 
 
