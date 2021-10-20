@@ -25,7 +25,7 @@
 
 
 #include "driver.h"
-
+#include "cJson.h"
 
 //---------------------------------------------------------------------------
 // Defines
@@ -97,6 +97,10 @@ struct _BOX {
 
     WCHAR *user_temp_path;
     ULONG user_temp_path_len;
+
+    //
+    cJSON*  js_regrules;
+
 };
 
 

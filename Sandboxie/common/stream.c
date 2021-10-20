@@ -43,13 +43,16 @@ struct STREAM {
 #pragma pack(pop)
 
 #define STREAM_DATA_SIZE (PAGE_SIZE - sizeof(STREAM) - 8)
-
+#define STREAM_DATA_SIZE_EX (sizeof(STREAM) + 8)
 //---------------------------------------------------------------------------
 // Functions
 //---------------------------------------------------------------------------
 
 NTSTATUS Stream_Read_More(
     IN  STREAM *stream);
+
+NTSTATUS Stream_Read_More_Ex(
+	IN  STREAM* stream);
 
 //---------------------------------------------------------------------------
 // Stream_Open (user mode)
@@ -154,6 +157,79 @@ NTSTATUS Stream_Open(
     return status;
 }
 
+NTSTATUS Stream_OpenEx(
+	OUT STREAM** out_stream,
+	IN  const WCHAR* FullPath,
+	IN  ACCESS_MASK DesiredAccess,
+	IN  ULONG FileAttributes,
+	IN  ULONG ShareAccess,
+	IN  ULONG CreateDisposition,
+	IN  ULONG CreateOptions)
+{
+	NTSTATUS status;
+	UNICODE_STRING uni;
+	OBJECT_ATTRIBUTES objattrs;
+	IO_STATUS_BLOCK MyIoStatusBlock;
+	STREAM stream = { 0 };
+	ULONG retries;
+    FILE_STANDARD_INFORMATION fsi = { 0 };
+
+	*out_stream = NULL;
+
+	RtlInitUnicodeString(&uni, FullPath);
+	InitializeObjectAttributes(&objattrs,
+		&uni, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+	for (retries = 0; retries < 10; ++retries) {
+
+		status = IoCreateFile(
+			&stream.handle,
+			DesiredAccess | SYNCHRONIZE,
+			&objattrs,
+			&MyIoStatusBlock,
+			NULL,                           // AllocationSize
+			FileAttributes,
+			ShareAccess,
+			CreateDisposition,
+			CreateOptions | FILE_SYNCHRONOUS_IO_NONALERT,
+			NULL, 0,                        // EaBuffer, EaLength
+			CreateFileTypeNone,             // CreateFileType
+			NULL,                           // ExtraCreateParameters
+			IO_NO_PARAMETER_CHECKING | IO_FORCE_ACCESS_CHECK);
+
+		// we could get STATUS_USER_MAPPED_FILE (why??), in which
+		// case we suspend for a short while, then retry
+
+		if (status == STATUS_USER_MAPPED_FILE) {
+			LARGE_INTEGER time;
+			time.QuadPart = -5000000L;
+			KeDelayExecutionThread(KernelMode, FALSE, &time);
+		}
+		else
+			break;
+	}
+
+	if (!NT_SUCCESS(status)) {
+		//ExFreePoolWithTag(stream, tzuk);
+		return status;
+	}
+
+	status = ZwQueryInformationFile(stream.handle, &MyIoStatusBlock, &fsi, sizeof(FILE_STANDARD_INFORMATION), FileStandardInformation);
+	if (!NT_SUCCESS(status))
+		return status;
+
+	*out_stream = ExAllocatePoolWithTag(PagedPool, fsi.EndOfFile.LowPart + STREAM_DATA_SIZE_EX, tzuk);
+	if (!out_stream)
+		return STATUS_INSUFFICIENT_RESOURCES;
+
+    (*out_stream)->data_len = fsi.EndOfFile.LowPart;
+    (*out_stream)->data_ptr = &(*out_stream)->data[0];
+    (*out_stream)->encoding = 0;
+    (*out_stream)->handle = stream.handle;
+
+	return status;
+}
+
 #endif
 
 //---------------------------------------------------------------------------
@@ -201,6 +277,27 @@ NTSTATUS Stream_Read_More(
         status = STATUS_END_OF_FILE;
 
     return status;
+}
+
+NTSTATUS Stream_Read_More_Ex(IN STREAM* stream)
+{
+	NTSTATUS status;
+	IO_STATUS_BLOCK MyIoStatusBlock;
+
+#ifndef KERNEL_MODE
+	status = NtReadFile(
+#else
+	status = ZwReadFile(
+#endif
+		stream->handle, NULL, NULL, NULL, &MyIoStatusBlock,
+		&stream->data[0], stream->data_len, NULL, NULL);
+
+	stream->data_ptr = &stream->data[0];
+
+	if (NT_SUCCESS(status) && stream->data_len == 0)
+		status = STATUS_END_OF_FILE;
+
+	return status;
 }
 
 //---------------------------------------------------------------------------
@@ -428,6 +525,15 @@ ULONG Read_BOM(UCHAR** data, ULONG* len)
 }
 
 //---------------------------------------------------------------------------
+// Get_BOM
+//---------------------------------------------------------------------------
+
+UCHAR* Get_BOM(IN STREAM* steam)
+{
+    return steam->data_ptr;
+}
+
+//---------------------------------------------------------------------------
 // Stream_Read_BOM
 //---------------------------------------------------------------------------
 
@@ -447,6 +553,27 @@ NTSTATUS Stream_Read_BOM(
     if (encoding) *encoding = stream->encoding;
 
     return STATUS_SUCCESS;
+}
+
+NTSTATUS Stream_Read_BOM_Ex(
+	IN  STREAM* stream,
+	ULONG* encoding)
+{
+    NTSTATUS status;
+	if (stream->data_len > 0)
+	{
+		status = Stream_Read_More_Ex(stream);
+		if (!NT_SUCCESS(status))
+			return status;
+
+        stream->encoding = Read_BOM(&stream->data_ptr, &stream->data_len);
+
+        if (encoding) *encoding = stream->encoding;
+    }
+    else
+        return STATUS_ACCESS_VIOLATION;
+
+    return status;
 }
 
 //---------------------------------------------------------------------------

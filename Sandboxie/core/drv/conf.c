@@ -38,7 +38,7 @@
 // Defines
 //---------------------------------------------------------------------------
 
-#define USE_CONF_MAP
+//#define USE_CONF_MAP
 
 #define CONF_LINE_LEN               2000        // keep in sync with sbieiniwire.h
 #define CONF_MAX_LINES              100000      // keep in sync with sbieiniwire.h
@@ -57,17 +57,18 @@
 //          the keys in the map are only pointers to the name fileds in the list entries
 //
 
+
 typedef struct _CONF_DATA {
 
-    POOL *pool;
-    LIST sections;      // CONF_SECTION
+	POOL* pool;
+	LIST sections;      // CONF_SECTION
 #ifdef USE_CONF_MAP
-    HASH_MAP sections_map;
+	HASH_MAP sections_map;
 #endif
-    BOOLEAN home;       // TRUE if configuration read from Driver_Home_Path
-    ULONG encoding;     // 0 - unicode, 1 - utf8, 2 - unicode (byte swaped)
-    volatile ULONG use_count;
-
+	BOOLEAN home;       // TRUE if configuration read from Driver_Home_Path
+	ULONG encoding;     // 0 - unicode, 1 - utf8, 2 - unicode (byte swaped)
+	volatile ULONG use_count;
+	cJSON* box_list;
 } CONF_DATA;
 
 
@@ -203,6 +204,84 @@ _FX void Conf_AdjustUseCount(BOOLEAN increase)
 //---------------------------------------------------------------------------
 // Conf_Read
 //---------------------------------------------------------------------------
+_FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
+{
+	static const WCHAR* path_rulejson = L"%s\\rule.json";
+	static const WCHAR* SystemRoot = L"\\SystemRoot";
+	NTSTATUS status;
+	CONF_DATA data;
+	WCHAR linenum_str[32];
+	ULONG path_len;
+	WCHAR* path = NULL;
+	BOOLEAN path_home;
+	STREAM* stream;
+
+	//
+	// allocate a buffer large enough for \SystemRoot\rule.json
+	// or (Home Path)\rule.json
+	//
+
+	path_len = 32;      // room for \SystemRoot
+	if (path_len < wcslen(Driver_HomePathDos) * sizeof(WCHAR))
+		path_len = wcslen(Driver_HomePathDos) * sizeof(WCHAR);
+	path_len += 64;     // room for \Sandboxie.ini
+
+	path = ExAllocatePoolWithTag(PagedPool, path_len, tzuk);
+	if (!path)
+		return STATUS_INSUFFICIENT_RESOURCES;
+
+	//
+	// open the configuration file, try both places, home first
+	//
+
+	path_home = TRUE; //  = FALSE;
+	RtlStringCbPrintfW(path, path_len, path_rulejson, Driver_HomePathDos); // , SystemRoot);
+
+	status = Stream_OpenEx(
+		&stream, path, FILE_GENERIC_READ, 0, FILE_SHARE_READ, FILE_OPEN, 0);
+
+	if (status == STATUS_OBJECT_NAME_NOT_FOUND) {
+
+		path_home = FALSE; // = TRUE;
+		RtlStringCbPrintfW(path, path_len, path_rulejson, SystemRoot); // , Driver_HomePathDos);
+
+		status = Stream_OpenEx(
+			&stream, path,
+			FILE_GENERIC_READ, 0, FILE_SHARE_READ, FILE_OPEN, 0);
+	}
+
+	if (!NT_SUCCESS(status)) {
+
+		if (status == STATUS_OBJECT_NAME_NOT_FOUND ||
+			status == STATUS_OBJECT_PATH_NOT_FOUND)
+		{
+			Log_Msg_Session(MSG_CONF_NO_FILE, NULL, NULL, session_id);
+		}
+		else {
+			wcscpy(linenum_str, L"(none)");
+			Log_Status_Ex_Session(
+				MSG_CONF_READ, 0, status, linenum_str, session_id);
+		}
+	}
+
+	if (!NT_SUCCESS(status)) {
+		ExFreePoolWithTag(path, tzuk);
+		return status;
+	}
+
+	//
+	// read data from the file
+	//
+
+	status = Stream_Read_BOM_Ex(stream, NULL);
+
+	if (NT_SUCCESS(status))
+		conf_data->box_list = cJSON_Parse(Get_BOM(stream));
+
+	Stream_Close(stream);
+
+	return status;
+}
 
 
 _FX NTSTATUS Conf_Read(ULONG session_id)
@@ -367,10 +446,9 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
 
                 pool = Conf_Data.pool;
                 memcpy(&Conf_Data, &data, sizeof(CONF_DATA));
-
+                status=Json_Conf_Read(&Conf_Data, session_id);
                 done = TRUE;
             }
-
             ExReleaseResourceLite(Conf_Lock);
             KeLowerIrql(irql);
 
@@ -1423,6 +1501,12 @@ _FX NTSTATUS Conf_Api_Reload(PROCESS *proc, ULONG64 *parms)
         if (pool)
             Pool_Delete(pool);
 
+		if (Conf_Data.box_list)
+		{
+			cJSON_Delete(Conf_Data.box_list);
+			Conf_Data.box_list = NULL;
+		}
+
         status = STATUS_SUCCESS;
     }
 
@@ -1653,6 +1737,12 @@ _FX void Conf_Unload(void)
         Pool_Delete(Conf_Data.pool);
         Conf_Data.pool = NULL;
     }
+
+	if (Conf_Data.box_list)
+	{
+		cJSON_Delete(Conf_Data.box_list);
+		Conf_Data.box_list = NULL;
+	}
 
     Mem_FreeLockResource(&Conf_Lock);
 }

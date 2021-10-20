@@ -169,6 +169,35 @@ _FX BOX *Box_CreateEx(
         }
     }
 
+	/*KIRQL irql;
+	KeRaiseIrql(APC_LEVEL, &irql);
+	ExAcquireResourceExclusiveLite(Conf_Lock, TRUE);
+    if (Conf_Data.box_list)
+    {
+        int len = cJSON_GetArraySize(Conf_Data.box_list);
+        for (int i = 0; i < len; i++)
+        {
+            cJSON*boxItem= cJSON_GetArrayItem(Conf_Data.box_list, i);
+            cJSON* boxName = cJSON_GetObjectItem(boxItem, "boxname");
+            char* name = boxName->string;
+            if (name)
+            {
+                ANSI_STRING temp;
+                RtlInitAnsiString(&temp, name);
+                UNICODE_STRING uni;
+                RtlAnsiStringToUnicodeString(&uni, &temp, TRUE);
+                if (wcscmp(uni.Buffer, boxname) == 0)
+                {
+                    box->js_regrules = cJSON_GetObjectItem(boxItem, "regrules");
+                    //box->js_regrules->match = Key_ReplaceOpenPathMatch;
+                }
+                RtlFreeUnicodeString(&uni);
+            }
+        }
+       // cJSON *item = 
+    }
+	ExReleaseResourceLite(Conf_Lock);
+	KeLowerIrql(irql);*/
     return box;
 }
 
@@ -532,7 +561,7 @@ _FX BOX *Box_Clone(POOL *pool, const BOX *model)
     CLONE_MEMBER(spooler_directory);
     CLONE_MEMBER(system_temp_path);
     CLONE_MEMBER(user_temp_path);
-
+    //box->js_regrules = model->js_regrules;
 #undef CLONE_MEMBER
 
     box->session_id = model->session_id;
