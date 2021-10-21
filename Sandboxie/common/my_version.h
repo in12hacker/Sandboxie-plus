@@ -1,5 +1,5 @@
-/*
- * Copyright 2004-2020 Sandboxie Holdings, LLC 
+ï»¿/*
+ * Copyright 2004-2020 Sandboxie Holdings, LLC
  * Copyright 2020-2021 David Xanatos, xanasoft.com
  *
  * This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Version Information
+ // Version Information
 
 #ifndef _MY_VERSION_H
 #define _MY_VERSION_H
@@ -32,8 +32,8 @@
 
 #define MY_PRODUCT_NAME_STRING  "Sandboxie"
 #define MY_COMPANY_NAME_STRING  "sandboxie-plus.com"
-#define MY_COPYRIGHT_STRING     "Copyright © 2020-2021 by David Xanatos (xanasoft.com)"
-#define MY_COPYRIGHT_STRING_OLD "Copyright © 2004-2020 by Sandboxie Holdings, LLC"
+#define MY_COPYRIGHT_STRING     "Copyright ? 2020-2021 by David Xanatos (xanasoft.com)"
+#define MY_COPYRIGHT_STRING_OLD "Copyright ? 2004-2020 by Sandboxie Holdings, LLC"
 
 #define SANDBOXIE               L"Sandboxie"
 #define SBIE                    L"SBIE"

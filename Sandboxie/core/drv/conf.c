@@ -257,7 +257,8 @@ _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 		if (status == STATUS_OBJECT_NAME_NOT_FOUND ||
 			status == STATUS_OBJECT_PATH_NOT_FOUND)
 		{
-			Log_Msg_Session(MSG_CONF_NO_FILE, NULL, NULL, session_id);
+			wcscpy(linenum_str, L"(Json)");
+			Log_Status_Ex_Session(MSG_CONF_NO_FILE, 0, status, linenum_str, session_id);
 		}
 		else {
 			wcscpy(linenum_str, L"(none)");
@@ -453,7 +454,7 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
 
                 pool = Conf_Data.pool;
                 memcpy(&Conf_Data, &data, sizeof(CONF_DATA));
-                status=Json_Conf_Read(&Conf_Data, session_id);
+                Json_Conf_Read(&Conf_Data, session_id);
                 done = TRUE;
             }
 
