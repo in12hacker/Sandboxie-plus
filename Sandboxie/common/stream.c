@@ -157,6 +157,10 @@ NTSTATUS Stream_Open(
     return status;
 }
 
+//---------------------------------------------------------------------------
+// Stream_OpenEx (kernel mode)
+//---------------------------------------------------------------------------
+
 NTSTATUS Stream_OpenEx(
 	OUT STREAM** out_stream,
 	IN  const WCHAR* FullPath,
@@ -554,6 +558,10 @@ NTSTATUS Stream_Read_BOM(
 
     return STATUS_SUCCESS;
 }
+
+//---------------------------------------------------------------------------
+// Stream_Read_BOM_Ex
+//---------------------------------------------------------------------------
 
 NTSTATUS Stream_Read_BOM_Ex(
 	IN  STREAM* stream,

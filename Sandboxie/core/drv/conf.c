@@ -276,10 +276,24 @@ _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 	// read data from the file
 	//
 
-	status = Stream_Read_BOM_Ex(stream, NULL);
+	ULONG ulEncode;
+	status = Stream_Read_BOM_Ex(stream, &ulEncode);
 
 	if (NT_SUCCESS(status))
-		conf_data->box_list = cJSON_Parse(Get_BOM(stream));
+	{
+		if (ulEncode != 1)
+		{
+			UNICODE_STRING uni_oldstr;
+			RtlInitUnicodeString(&uni_oldstr, (PCWSTR)Get_BOM(stream));
+			ANSI_STRING ani;
+			RtlUnicodeStringToAnsiString(&ani, &uni_oldstr, TRUE);
+			conf_data->box_list = cJSON_Parse(ani.Buffer);
+			RtlFreeAnsiString(&ani);
+		}
+		else
+			conf_data->box_list = cJSON_Parse(Get_BOM(stream));
+	}
+	
 
 	Stream_Close(stream);
 
