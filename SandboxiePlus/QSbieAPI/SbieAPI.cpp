@@ -288,7 +288,7 @@ SB_STATUS CSbieAPI::Connect(bool withQueue)
 	//m->lastRecordNum = 0;
 
 	// Note: this lib is not using all functions hence it can be compatible with multiple driver ABI revisions
-	QStringList CompatVersions = QStringList () << "5.52.0";
+	QStringList CompatVersions = QStringList () << "5.53.0";
 	QString CurVersion = GetVersion();
 	if (!CompatVersions.contains(CurVersion))
 	{
@@ -1195,7 +1195,7 @@ QString CSbieAPI::SbieIniGet(const QString& Section, const QString& Setting, qui
 
 	WCHAR out_buffer[CONF_LINE_LEN] = { 0 };
 
-	__declspec(align(8)) UNICODE_STRING64 Output = { 0, CONF_LINE_LEN - 4 , (ULONG64)out_buffer };
+	__declspec(align(8)) UNICODE_STRING64 Output = { 0, sizeof(out_buffer) - 4 , (ULONG64)out_buffer };
 	__declspec(align(8)) ULONG64 parms[API_NUM_ARGS];
 
 	memset(parms, 0, sizeof(parms));
@@ -1308,6 +1308,8 @@ SB_STATUS CSbieAPI::UpdateProcesses(bool bKeep, bool bAllSessions)
 		return Status;
 	}
 
+	bool ProcessesChanged = false;
+
 	QMap<quint32, CBoxedProcessPtr>	OldProcessList;
 	foreach(const CSandBoxPtr& pBox, m_SandBoxes)
 		OldProcessList.insert(pBox->m_ProcessList);
@@ -1331,6 +1333,8 @@ SB_STATUS CSbieAPI::UpdateProcesses(bool bKeep, bool bAllSessions)
 			m_BoxedProxesses.insert(ProcessId, pProcess);
 
 			pProcess->InitProcessInfo();
+
+			ProcessesChanged = true;
 		}
 
 		pProcess->InitProcessInfoEx();
@@ -1338,21 +1342,30 @@ SB_STATUS CSbieAPI::UpdateProcesses(bool bKeep, bool bAllSessions)
 
 	foreach(const CBoxedProcessPtr& pProcess, OldProcessList) 
 	{
-		if (!pProcess->IsTerminated())
+		if (!pProcess->IsTerminated()) {
 			pProcess->SetTerminated();
+			ProcessesChanged = true;
+		}
 		else if (!bKeep && pProcess->IsTerminated(1500)) { // keep for at least 1.5 seconds
 			pProcess->m_pBox->m_ProcessList.remove(pProcess->m_ProcessId);
 			m_BoxedProxesses.remove(pProcess->m_ProcessId);
 		}
 	}
 
-	foreach(const CSandBoxPtr& pBox, m_SandBoxes)
-	{
-		bool WasBoxClosed = pBox->m_ActiveProcessCount > 0 && pBox->GetProcessList().count() == 0;
-		pBox->m_ActiveProcessCount = pBox->GetProcessList().count();
-		if (WasBoxClosed) {
-			pBox->CloseBox();
-			emit BoxClosed(pBox->GetName());
+	if (ProcessesChanged) {
+		foreach(const CSandBoxPtr & pBox, m_SandBoxes)
+		{
+			int ActiveProcessCount = 0;
+			foreach(const CBoxedProcessPtr & pProcess, pBox->GetProcessList()) {
+				if (!pProcess->IsTerminated())
+					ActiveProcessCount++;
+			}
+			bool WasBoxClosed = pBox->m_ActiveProcessCount > 0 && ActiveProcessCount == 0;
+			pBox->m_ActiveProcessCount = ActiveProcessCount;
+			if (WasBoxClosed) {
+				pBox->CloseBox();
+				emit BoxClosed(pBox->GetName());
+			}
 		}
 	}
 

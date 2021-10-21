@@ -53,6 +53,11 @@ public:
 	void				RunSandboxed(const QStringList& Commands, const QString& BoxName);
 
 	QIcon				GetBoxIcon(bool inUse, int boxType = 0);
+	QString				GetBoxDescription(int boxType);
+
+	bool				CheckCertificate();
+
+	void				UpdateTheme();
 
 protected:
 	SB_STATUS			ConnectSbie();
@@ -173,6 +178,8 @@ private slots:
 	void				OnUpdateProgress(qint64 bytes, qint64 bytesTotal);
 	void				OnUpdateDownload();
 
+	void				SetUITheme();
+
 private:
 	void				CreateMenus();
 	void				CreateToolBar();
@@ -252,6 +259,8 @@ private:
 
 	QSystemTrayIcon*	m_pTrayIcon;
 	QMenu*				m_pTrayMenu;
+	QAction*			m_pTraySeparator;
+	QWidgetAction*		m_pTrayList;
 	QTreeWidget*		m_pTrayBoxes;
 	//QMenu*				m_pBoxMenu;
 	bool				m_bIconEmpty;
@@ -263,13 +272,13 @@ private:
 	bool				m_pProgressModal;
 	CPopUpWindow*		m_pPopUpWindow;
 
-	void				SetUITheme();
+	bool				m_ThemeUpdatePending;
 	QString				m_DefaultStyle;
 	QPalette			m_DefaultPalett;
 
 	void				LoadLanguage();
-	QTranslator			m_Translator;
-	QByteArray			m_Translation;
+	void				LoadLanguage(const QString& Lang, const QString& Module, int Index);
+	QTranslator			m_Translator[2];
 
 public:
 	quint32				m_LanguageId;

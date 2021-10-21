@@ -66,6 +66,11 @@ public:
 				{
 				}*/
 			}
+			else if (msg->message == WM_DWMCOLORIZATIONCOLORCHANGED)
+			{
+				if (theGUI && theConf->GetInt("Options/UseDarkTheme", 2) == 2)
+					theGUI->UpdateTheme();
+			}
 		}
 		return false;
 	}
@@ -91,6 +96,7 @@ CSandMan::CSandMan(QWidget *parent)
 	QDesktopServices::setUrlHandler("https", this, "OpenUrl");
 	QDesktopServices::setUrlHandler("sbie", this, "OpenUrl");
 
+	m_ThemeUpdatePending = false;
 	m_DefaultStyle = QApplication::style()->objectName();
 	m_DefaultPalett = QApplication::palette();
 
@@ -201,7 +207,7 @@ CSandMan::CSandMan(QWidget *parent)
 	pShowHide->setFont(f);
 	m_pTrayMenu->addSeparator();
 
-	QWidgetAction* pTrayList = new QWidgetAction(m_pTrayMenu);
+	m_pTrayList = new QWidgetAction(m_pTrayMenu);
 
 	QWidget* pWidget = new CActionWidget();
     QHBoxLayout* pLayout = new QHBoxLayout();
@@ -227,8 +233,8 @@ CSandMan::CSandMan(QWidget *parent)
 	
 	pLayout->addWidget(m_pTrayBoxes);
 
-    pTrayList->setDefaultWidget(pWidget);
-	m_pTrayMenu->addAction(pTrayList);
+    m_pTrayList->setDefaultWidget(pWidget);
+	m_pTrayMenu->addAction(m_pTrayList);
 
 
 	m_pTrayBoxes->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -236,7 +242,7 @@ CSandMan::CSandMan(QWidget *parent)
 	connect(m_pTrayBoxes, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(OnBoxDblClick(QTreeWidgetItem*)));
 	//m_pBoxMenu
 
-	m_pTrayMenu->addSeparator();
+	m_pTraySeparator = m_pTrayMenu->addSeparator();
 	m_pTrayMenu->addAction(m_pEmptyAll);
 	m_pDisableForce2 = m_pTrayMenu->addAction(tr("Disable Forced Programs"), this, SLOT(OnDisableForce2()));
 	m_pDisableForce2->setCheckable(true);
@@ -528,13 +534,16 @@ void CSandMan::closeEvent(QCloseEvent *e)
 		}
 	}
 
+	if(theAPI->IsConnected())
+		m_pBoxView->SaveUserConfig();
+
 	if (IsFullyPortable() && theAPI->IsConnected())
 	{
 		int PortableStop = theConf->GetInt("Options/PortableStop", -1);
 		if (PortableStop == -1)
 		{
 			bool State = false;
-			auto Ret = CCheckableMessageBox::question(this, "Sandboxie-Plus", tr("Sandboxie-Plus was running in portable mode, now it has to clean up the created services. This will prompt for administrative privileges.\r\n\r\nDo you want to do the clean up?")
+			auto Ret = CCheckableMessageBox::question(this, "Sandboxie-Plus", tr("Sandboxie-Plus was running in portable mode, now it has to clean up the created services. This will prompt for administrative privileges.\n\nDo you want to do the clean up?")
 				, tr("Don't show this message again."), &State, QDialogButtonBox::Yes | QDialogButtonBox::No | QDialogButtonBox::Cancel, QDialogButtonBox::Yes, QMessageBox::Question);
 
 			if (Ret == QDialogButtonBox::Cancel)
@@ -722,10 +731,20 @@ void CSandMan::timerEvent(QTimerEvent* pEvent)
 			bIsMonitoring = !theAPI->GetTrace().isEmpty();
 		m_pTraceView->setEnabled(bIsMonitoring);
 
+		QMap<quint32, CBoxedProcessPtr> Processes = theAPI->GetAllProcesses();
+		int ActiveProcesses = 0;
+		if (m_pKeepTerminated->isChecked()) {
+			foreach(const CBoxedProcessPtr & Process, Processes) {
+				if (!Process->IsTerminated())
+					ActiveProcesses++;
+			}
+		}
+		else 
+			ActiveProcesses = Processes.count();
 
-		if (m_bIconEmpty != (theAPI->TotalProcesses() == 0) || m_bIconDisabled != bForceProcessDisabled)
+		if (m_bIconEmpty != (ActiveProcesses == 0) || m_bIconDisabled != bForceProcessDisabled)
 		{
-			m_bIconEmpty = (theAPI->TotalProcesses() == 0);
+			m_bIconEmpty = (ActiveProcesses == 0);
 			m_bIconDisabled = bForceProcessDisabled;
 
 			m_pTrayIcon->setIcon(GetTrayIconName());
@@ -858,6 +877,7 @@ void CSandMan::OnStatusChanged()
 	{
 		QString SbiePath = theAPI->GetSbiePath();
 		OnLogMessage(tr("Sbie Directory: %1").arg(SbiePath));
+		OnLogMessage(tr("Sbie+ Version: %1 (%2)").arg(GetVersion()).arg(theAPI->GetVersion()));
 		OnLogMessage(tr("Loaded Config: %1").arg(theAPI->GetIniPath()));
 
 		//statusBar()->showMessage(tr("Driver version: %1").arg(theAPI->GetVersion()));
@@ -874,7 +894,7 @@ void CSandMan::OnStatusChanged()
 			{
 				bool State = false;
 				PortableRootDir = CCheckableMessageBox::question(this, "Sandboxie-Plus", 
-					tr("Sandboxie-Plus was started in portable mode, do you want to put the Sandbox folder into its parent directory?\r\nYes will choose: %1\r\nNo will choose: %2")
+					tr("Sandboxie-Plus was started in portable mode, do you want to put the Sandbox folder into its parent directory?\nYes will choose: %1\nNo will choose: %2")
 					.arg(BoxPath)
 					.arg("C:\\Sandbox") // todo resolve os drive properly
 					, tr("Don't show this message again."), &State, QDialogButtonBox::Yes | QDialogButtonBox::No, QDialogButtonBox::Yes, QMessageBox::Information) == QDialogButtonBox::Yes ? 1 : 0;
@@ -1115,7 +1135,7 @@ CRecoveryWindow* CSandMan::ShowRecovery(const CSandBoxPtr& pBox, bool bFind)
 {
 	auto pBoxEx = pBox.objectCast<CSandBoxPlus>();
 	if (pBoxEx->m_pRecoveryWnd == NULL) {
-		pBoxEx->m_pRecoveryWnd = new CRecoveryWindow(pBox, this);
+		pBoxEx->m_pRecoveryWnd = new CRecoveryWindow(pBox);
 		connect(pBoxEx->m_pRecoveryWnd, &CRecoveryWindow::Closed, [pBoxEx]() {
 			pBoxEx->m_pRecoveryWnd = NULL;
 		});
@@ -1598,7 +1618,7 @@ void CSandMan::OnReloadIni()
 
 void CSandMan::OnIniReloaded()
 {
-	m_pBoxView->ReloadGroups();
+	m_pBoxView->ReloadUserConfig();
 	m_pPopUpWindow->ReloadHiddenMessages();
 }
 
@@ -1817,6 +1837,9 @@ void CSandMan::OnSysTray(QSystemTrayIcon::ActivationReason Reason)
 				}
 
 				m_pTrayBoxes->setFixedHeight(Height);
+
+				m_pTrayMenu->removeAction(m_pTrayList);
+				m_pTrayMenu->insertAction(m_pTraySeparator, m_pTrayList);
 			}
 
 			m_pTrayMenu->popup(QCursor::pos());	
@@ -2173,6 +2196,8 @@ void CSandMan::OnAbout()
 
 void CSandMan::SetUITheme()
 {
+	m_ThemeUpdatePending = false;
+
 	bool bDark;
 	int iDark = theConf->GetInt("Options/UseDarkTheme", 2);
 	if (iDark == 2) {
@@ -2214,12 +2239,21 @@ void CSandMan::SetUITheme()
 	CTreeItemModel::SetDarkMode(bDark);
 	CListItemModel::SetDarkMode(bDark);
 	CPopUpWindow::SetDarkMode(bDark);
+	CPanelView::SetDarkMode(bDark);
+	CFinder::SetDarkMode(bDark);
+}
+
+void CSandMan::UpdateTheme()
+{
+	if (!m_ThemeUpdatePending)
+	{
+		m_ThemeUpdatePending = true;
+		QTimer::singleShot(500, this, SLOT(SetUITheme()));
+	}
 }
 
 void CSandMan::LoadLanguage()
 {
-	qApp->removeTranslator(&m_Translator);
-	m_Translation.clear();
 	m_LanguageId = 0;
 
 	QString Lang = theConf->GetString("Options/UiLanguage");
@@ -2227,28 +2261,35 @@ void CSandMan::LoadLanguage()
 		Lang = QLocale::system().name();
 
 	if (!Lang.isEmpty())
-	{
 		m_LanguageId = LocaleNameToLCID(Lang.toStdWString().c_str(), 0);
+	if (!m_LanguageId) 
+		m_LanguageId = 1033; // default to English
 
+	LoadLanguage(Lang, "sandman", 0);
+	LoadLanguage(Lang, "qt", 1);
+}
+
+void CSandMan::LoadLanguage(const QString& Lang, const QString& Module, int Index)
+{
+	qApp->removeTranslator(&m_Translator[Index]);
+
+	if (!Lang.isEmpty())
+	{
 		QString LangAux = Lang; // Short version as fallback
 		LangAux.truncate(LangAux.lastIndexOf('_'));
 
-		QString LangPath = QApplication::applicationDirPath() + "/translations/sandman_";
+		QString LangDir = QApplication::applicationDirPath() + "/translations/";
+
+		QString LangPath = LangDir + Module + "_";
 		bool bAux = false;
 		if (QFile::exists(LangPath + Lang + ".qm") || (bAux = QFile::exists(LangPath + LangAux + ".qm")))
 		{
-			QFile File(LangPath + (bAux ? LangAux : Lang) + ".qm");
-			File.open(QFile::ReadOnly);
-			m_Translation = File.readAll();
+			if(m_Translator[Index].load(LangPath + (bAux ? LangAux : Lang) + ".qm", LangDir))
+				qApp->installTranslator(&m_Translator[Index]);
 		}
-
-		if (!m_Translation.isEmpty() && m_Translator.load((const uchar*)m_Translation.data(), m_Translation.size()))
-			qApp->installTranslator(&m_Translator);
 	}
-
-	if (!m_LanguageId) 
-		m_LanguageId = 1033; // default to English
 }
+
 
 // Make sure that QPlatformTheme strings won't be marked as vanished in all .ts files, even after running lupdate
 
@@ -2260,6 +2301,14 @@ QT_TRANSLATE_NOOP("QPlatformTheme", "&Yes"),
 QT_TRANSLATE_NOOP("QPlatformTheme", "&No"),
 };
 
+// Make sure that CSandBox strings won't be marked as vanished in all .ts files, even after running lupdate
+
+static const char* CSandBox_strings[] = {
+QT_TRANSLATE_NOOP("CSandBox", "Waiting for folder: %1"),
+QT_TRANSLATE_NOOP("CSandBox", "Deleting folder: %1"),
+QT_TRANSLATE_NOOP("CSandBox", "Merging folders: %1 &gt;&gt; %2"),
+QT_TRANSLATE_NOOP("CSandBox", "Finishing Snapshot Merge..."),
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // WinSpy based window finder

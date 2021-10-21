@@ -84,7 +84,7 @@
     <QtModules>core;network;widgets;winextras</QtModules>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <QtInstall>msvc2019 x64</QtInstall>
+    <QtInstall>msvc2019_64</QtInstall>
     <QtModules>core;network;widgets;winextras</QtModules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="QtSettings">

@@ -57,17 +57,16 @@
 //          the keys in the map are only pointers to the name fileds in the list entries
 //
 
-
 typedef struct _CONF_DATA {
 
-	POOL* pool;
-	LIST sections;      // CONF_SECTION
+    POOL *pool;
+    LIST sections;      // CONF_SECTION
 #ifdef USE_CONF_MAP
-	HASH_MAP sections_map;
+    HASH_MAP sections_map;
 #endif
-	BOOLEAN home;       // TRUE if configuration read from Driver_Home_Path
-	ULONG encoding;     // 0 - unicode, 1 - utf8, 2 - unicode (byte swaped)
-	volatile ULONG use_count;
+    BOOLEAN home;       // TRUE if configuration read from Driver_Home_Path
+    ULONG encoding;     // 0 - unicode, 1 - utf8, 2 - unicode (byte swaped)
+    volatile ULONG use_count;
 	cJSON* box_list;
 } CONF_DATA;
 
@@ -168,6 +167,7 @@ static PERESOURCE Conf_Lock = NULL;
 static const WCHAR *Conf_GlobalSettings   = L"GlobalSettings";
 static const WCHAR *Conf_UserSettings_    = L"UserSettings_";
 static const WCHAR *Conf_Template_        = L"Template_";
+static const WCHAR *Conf_DefaultTemplates = L"DefaultTemplates";
        const WCHAR *Conf_TemplateSettings = L"TemplateSettings";
 
 static const WCHAR *Conf_Template = L"Template";
@@ -456,6 +456,7 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
                 status=Json_Conf_Read(&Conf_Data, session_id);
                 done = TRUE;
             }
+
             ExReleaseResourceLite(Conf_Lock);
             KeLowerIrql(irql);
 
@@ -797,6 +798,40 @@ _FX NTSTATUS Conf_Read_Line(STREAM *stream, WCHAR *line, int *linenum)
 
 
 //---------------------------------------------------------------------------
+// Conf_Get_Section
+//---------------------------------------------------------------------------
+
+
+_FX CONF_SECTION* Conf_Get_Section(
+    CONF_DATA* data, const WCHAR* section_name)
+{
+#ifdef USE_CONF_MAP
+    //
+    // lookup the template section in the hash map
+    //
+
+    return map_get(&data->sections_map, section_name);
+#else
+    //
+    // scan for a matching template section
+    //
+
+    CONF_SECTION* section = List_Head(&data->sections);
+    while (section) {
+
+        if (_wcsicmp(section->name, section_name) == 0) {
+
+            break;
+        }
+
+        section = List_Next(section);
+    }
+    return section;
+#endif
+}
+
+
+//---------------------------------------------------------------------------
 // Conf_Merge_Templates
 //---------------------------------------------------------------------------
 
@@ -808,6 +843,28 @@ _FX NTSTATUS Conf_Merge_Templates(CONF_DATA *data, ULONG session_id)
     CONF_SETTING *setting;
 
     //
+    // first handle the global section
+    //
+
+    CONF_SECTION* global = Conf_Get_Section(data, Conf_GlobalSettings);
+    if (global) {
+        status = Conf_Merge_Global(data, session_id, global);
+        if (!NT_SUCCESS(status))
+            return status;
+    }
+
+    //
+    // second handle the default templates
+    //
+
+    global = Conf_Get_Section(data, Conf_DefaultTemplates);
+    if (global) {
+        status = Conf_Merge_Global(data, session_id, global);
+        if (!NT_SUCCESS(status))
+            return status;
+    }
+
+    //
     // scan sections to find a sandbox section
     //
 
@@ -815,21 +872,6 @@ _FX NTSTATUS Conf_Merge_Templates(CONF_DATA *data, ULONG session_id)
     while (sandbox) {
 
         CONF_SECTION *next_sandbox = List_Next(sandbox);
-
-        //
-        // if we found the global section, handle it
-        //
-
-        if (_wcsicmp(sandbox->name, Conf_GlobalSettings) == 0) {
-
-            status = Conf_Merge_Global(data, session_id, sandbox);
-
-            if (! NT_SUCCESS(status))
-                return status;
-
-            sandbox = next_sandbox;
-            continue;
-        }
 
         //
         // break once the template section starts
@@ -842,10 +884,11 @@ _FX NTSTATUS Conf_Merge_Templates(CONF_DATA *data, ULONG session_id)
         }
 
         //
-        // skip any local template sections and user settings sections
+        // skip the global section, skip any local template sections and user settings sections
         //
 
-        if (_wcsnicmp(sandbox->name, Conf_Template_, 9)      == 0 || // Template_ or Template_Local_
+        if (_wcsicmp(sandbox->name, Conf_GlobalSettings) == 0     ||
+            _wcsnicmp(sandbox->name, Conf_Template_, 9)      == 0 || // Template_ or Template_Local_
             _wcsnicmp(sandbox->name, Conf_UserSettings_, 13) == 0) {
 
             sandbox = next_sandbox;
@@ -953,20 +996,21 @@ _FX NTSTATUS Conf_Merge_Global(
             CONF_SECTION *next_sandbox = List_Next(sandbox);
 
             //
-            // skip the global section
+            // break once the template section starts
             //
 
-            if (_wcsicmp(sandbox->name, Conf_GlobalSettings) == 0) {
-
-                sandbox = next_sandbox;
-                continue;
+            if (sandbox->from_template) {
+                // we can break because template sections come after
+                // all non-template sections
+                break;
             }
 
             //
-            // skip any template sections and user settings sections
+            // skip the global section, any template sections and user settings sections
             //
 
-            if (_wcsnicmp(sandbox->name, Conf_Template_, 9)      == 0 ||
+            if (_wcsicmp(sandbox->name, Conf_GlobalSettings)     == 0 ||
+                _wcsnicmp(sandbox->name, Conf_Template_, 9)      == 0 ||
                 _wcsnicmp(sandbox->name, Conf_UserSettings_, 13) == 0) {
 
                 sandbox = next_sandbox;
@@ -1010,37 +1054,14 @@ _FX NTSTATUS Conf_Merge_Template(
     CONF_DATA *data, ULONG session_id,
     const WCHAR *tmpl_name, CONF_SECTION *section)
 {
-
-#ifdef USE_CONF_MAP
-    //
-    // lookup the template section in the hash map
-    //
+    CONF_SECTION *tmpl = NULL;
 
     WCHAR section_name[130]; // 128 + 2 // max regular section length is 64
-    CONF_SECTION *tmpl = NULL;
     if (wcslen(tmpl_name) < 119) { // 128 - wcslen(Conf_Template_)
         wcscpy(section_name, Conf_Template_);
         wcscat(section_name, tmpl_name);
-        tmpl = map_get(&data->sections_map, section_name);
+        tmpl = Conf_Get_Section(data, section_name);
     }
-#else
-    //
-    // scan for a matching template section
-    //
-
-    CONF_SECTION *tmpl = List_Head(&data->sections);
-    while (tmpl) {
-
-        if (wcslen(tmpl->name) >= 10 &&
-            _wcsnicmp(tmpl->name, Conf_Template_, 9) == 0 &&
-            _wcsicmp(tmpl->name + 9, tmpl_name) == 0) {
-
-            break;
-        }
-
-        tmpl = List_Next(tmpl);
-    }
-#endif
 
     //
     // copy settings from template section into sandbox section
@@ -1671,7 +1692,10 @@ _FX NTSTATUS Conf_Api_Query(PROCESS *proc, ULONG64 *parms)
 
     Conf_AdjustUseCount(TRUE);
 
-    value1 = Conf_Get(boxname, setting, index);
+    if (setting && setting[0] == L'%')
+        value1 = setting; // shortcut to expand a avariable
+    else
+        value1 = Conf_Get(boxname, setting, index);
     if (! value1) {
         status = STATUS_RESOURCE_NAME_NOT_FOUND;
         goto release_and_return;

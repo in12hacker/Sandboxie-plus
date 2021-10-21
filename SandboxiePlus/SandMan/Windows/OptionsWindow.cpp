@@ -138,7 +138,8 @@ COptionsWindow::COptionsWindow(const QSharedPointer<CSbieIni>& pBox, const QStri
 	// Templates
 	connect(ui.cmbCategories, SIGNAL(currentIndexChanged(int)), this, SLOT(OnFilterTemplates()));
 	connect(ui.txtTemplates, SIGNAL(textChanged(const QString&)), this, SLOT(OnFilterTemplates()));
-	connect(ui.treeTemplates, SIGNAL(itemClicked(QTreeWidgetItem*, int)), this, SLOT(OnTemplateClicked(QTreeWidgetItem*, int)));
+	//connect(ui.treeTemplates, SIGNAL(itemClicked(QTreeWidgetItem*, int)), this, SLOT(OnTemplateClicked(QTreeWidgetItem*, int)));
+	connect(ui.treeTemplates, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(OnTemplateClicked(QTreeWidgetItem*, int)));
 	connect(ui.treeTemplates, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(OnTemplateDoubleClicked(QTreeWidgetItem*, int)));
 	connect(ui.btnAddTemplate, SIGNAL(clicked(bool)), this, SLOT(OnAddTemplates()));
 	connect(ui.btnDelTemplate, SIGNAL(clicked(bool)), this, SLOT(OnDelTemplates()));
@@ -597,14 +598,16 @@ void COptionsWindow::LoadIniSection()
 {
 	QString Section;
 
-	/*
-	m_Settings = m_pBox->GetIniSection(NULL, m_Template);
-	
-	for (QList<QPair<QString, QString>>::const_iterator I = m_Settings.begin(); I != m_Settings.end(); ++I)
-		Section += I->first + "=" + I->second + "\n";
-	*/
+	// Note: the service only caches sandboxie.ini not templates. ini hence for global tempaltes we need to load the section through the driver
+	if (m_Template && m_pBox->GetName().mid(9, 6).compare("Local_", Qt::CaseInsensitive) != 0)
+	{
+		m_Settings = m_pBox->GetIniSection(NULL, m_Template);
 
-	Section = m_pBox->GetAPI()->SbieIniGetEx(m_pBox->GetName(), "");
+		for (QList<QPair<QString, QString>>::const_iterator I = m_Settings.begin(); I != m_Settings.end(); ++I)
+			Section += I->first + "=" + I->second + "\n";
+	}
+	else
+		Section = m_pBox->GetAPI()->SbieIniGetEx(m_pBox->GetName(), "");
 
 	ui.txtIniSection->setPlainText(Section);
 }

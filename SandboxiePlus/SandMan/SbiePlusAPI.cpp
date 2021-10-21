@@ -115,11 +115,19 @@ void CSandBoxPlus::UpdateDetails()
 	m_bINetBlocked = false;
 	foreach(const QString& Entry, GetTextList("ClosedFilePath", false))
 	{
-		if (Entry.contains("InternetAccessDevices")) {
+		if (Entry == "!<InternetAccess>,InternetAccessDevices") {
 			m_bINetBlocked = true;
 			break;
 		}
 	}
+	foreach(const QString& Entry, GetTextList("AllowNetworkAccess", false))
+	{
+		if (Entry == "!<InternetAccess>,n") {
+			m_bINetBlocked = true;
+			break;
+		}
+	}
+
 
 	m_bSharesAllowed = GetBool("BlockNetworkFiles", true) == false;
 
@@ -479,9 +487,9 @@ QString CSbieProcess::GetStatusStr() const
 	//else if (m_bSuspended)
 	//	Status = tr("Suspended");
 	else {
-		if ((m_ProcessFlags & 0x00000002) != 0) // SBIE_FLAG_FORCED_PROCESS
-			Status = tr("Forced ");
 		Status = tr("Running");
+		if ((m_ProcessFlags & 0x00000002) != 0) // SBIE_FLAG_FORCED_PROCESS
+			Status.prepend(tr("Forced "));
 	}
 
 	if(m_SessionId != theAPI->GetSessionID())
