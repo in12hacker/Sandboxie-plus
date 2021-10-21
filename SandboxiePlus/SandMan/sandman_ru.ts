@@ -541,30 +541,26 @@
         <translation>Вы хотите, чтобы диспетчер очереди печати мог писать вне песочницы для %1 (%2)?</translation>
     </message>
     <message>
-        <source>Do you want to allow %4 (%5) to copy a %1 large file into sandbox: %2?<byte value="xd"/>
+        <source>Do you want to allow %4 (%5) to copy a %1 large file into sandbox: %2?
 File name: %3</source>
-        <translatorcomment>We recommend to not remove or touch the byte value references in all .ts files, because they are needed to render correctly some specific source tags that contain multiple lines.</translatorcomment>
         <translation>Разрешить %4 (%5) копировать большой файл %1 в песочницу: %2?
 Имя файла: %3</translation>
     </message>
     <message>
-        <source>Do you want to allow %1 (%2) access to the internet?<byte value="xd"/>
+        <source>Do you want to allow %1 (%2) access to the internet?
 Full path: %3</source>
-        <translatorcomment>We recommend to not remove or touch the byte value references in all .ts files, because they are needed to render correctly some specific source tags that contain multiple lines.</translatorcomment>
         <translation>Вы хотите разрешить %1 (%2) доступ к Интернет?
 Полный путь: %3</translation>
     </message>
     <message>
-        <source>%1 is eligible for quick recovery from %2.<byte value="xd"/>
+        <source>%1 is eligible for quick recovery from %2.
 The file was written by: %3</source>
-        <translatorcomment>We recommend to not remove or touch the byte value references in all .ts files, because they are needed to render correctly some specific source tags that contain multiple lines.</translatorcomment>
         <translation>%1 может быть быстро восстановлен из %2.
 Файл был записан: %3</translation>
     </message>
     <message>
-        <source>Migrating a large file %1 into the sandbox %2, %3 left.<byte value="xd"/>
+        <source>Migrating a large file %1 into the sandbox %2, %3 left.
 Full path: %4</source>
-        <translatorcomment>We recommend to not remove or touch the byte value references in all .ts files, because they are needed to render correctly some specific source tags that contain multiple lines.</translatorcomment>
         <translation>Перенос большого файла %1 в песочницу %2, осталось %3.
 Полный путь: %4</translation>
     </message>
@@ -597,11 +593,50 @@ Full path: %4</source>
     </message>
     <message>
         <source>Clear this list</source>
-        <translation>Очистить этот список</translation>
+        <translation type="vanished">Очистить этот список</translation>
     </message>
     <message>
         <source>There are %1 new files available to recover.</source>
         <translation>Доступно %1 новых файлов для восстановления.</translation>
+    </message>
+    <message>
+        <source>Remember target selection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Original location</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Browse for location</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clear folder list</source>
+        <translation type="unfinished">Очистить список папок</translation>
+    </message>
+    <message>
+        <source>Close until all programs stop in this box</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CSandBox</name>
+    <message>
+        <source>Waiting for folder: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deleting folder: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Merging folders: %1 &amp;gt;&amp;gt; %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Finishing Snapshot Merge...</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1188,26 +1223,8 @@ Full path: %4</source>
         <translation>Ведение журнала трассировки</translation>
     </message>
     <message>
-        <source>Sandboxie-Plus was running in portable mode, now it has to clean up the created services. This will prompt for administrative privileges.<byte value="xd"/>
-<byte value="xd"/>
-Do you want to do the clean up?</source>
-        <translatorcomment>We recommend to not remove or touch the byte value references in all .ts files, because they are needed to render correctly some specific source tags that contain multiple lines.</translatorcomment>
-        <translation>Sandboxie-Plus работала в портативном режиме, теперь ей нужно очистить созданные сервисы. Это потребует административных привилегий.
-
-Вы хотите сделать уборку?</translation>
-    </message>
-    <message>
         <source>Unknown operation &apos;%1&apos; requested via command line</source>
         <translation>Неизвестная операция &apos;%1&apos; запрошена из командной строки</translation>
-    </message>
-    <message>
-        <source>Sandboxie-Plus was started in portable mode, do you want to put the Sandbox folder into its parent directory?<byte value="xd"/>
-Yes will choose: %1<byte value="xd"/>
-No will choose: %2</source>
-        <translatorcomment>We recommend to not remove or touch the byte value references in all .ts files, because they are needed to render correctly some specific source tags that contain multiple lines.</translatorcomment>
-        <translation>Sandboxie-Plus был запущен в портативном режиме, вы хотите поместить папку Sandbox в ее родительский каталог?
-Да, выберет: %1
-Нет, выберет: %2</translation>
     </message>
     <message>
         <source>CAUTION: Another agent (probably SbieCtrl.exe) is already managing this Sandboxie session, please close it first and reconnect to take over.</source>
@@ -1240,6 +1257,26 @@ No will choose: %2</source>
     <message>
         <source>Unknown Error Status: 0x%1</source>
         <translation>Неизвестный статус ошибки: 0x%1</translation>
+    </message>
+    <message>
+        <source>Sbie+ Version: %1 (%2)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sandboxie-Plus was running in portable mode, now it has to clean up the created services. This will prompt for administrative privileges.
+
+Do you want to do the clean up?</source>
+        <translation>Sandboxie-Plus работала в портативном режиме, теперь ей нужно очистить созданные сервисы. Это потребует административных привилегий.
+
+Вы хотите сделать уборку?</translation>
+    </message>
+    <message>
+        <source>Sandboxie-Plus was started in portable mode, do you want to put the Sandbox folder into its parent directory?
+Yes will choose: %1
+No will choose: %2</source>
+        <translation>Sandboxie-Plus был запущен в портативном режиме, вы хотите поместить папку Sandbox в ее родительский каталог?
+Да, выберет: %1
+Нет, выберет: %2</translation>
     </message>
 </context>
 <context>
@@ -1407,6 +1444,14 @@ No will choose: %2</source>
     <message>
         <source> in session %1</source>
         <translation> в сеансе %1</translation>
+    </message>
+    <message>
+        <source>Thunderbird</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forced </source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1881,7 +1926,51 @@ No will choose: %2</source>
     </message>
     <message>
         <source>Filter selected box only</source>
-        <translation>Фильтр только выбранная песочница</translation>
+        <translation type="vanished">Фильтр только выбранная песочница</translation>
+    </message>
+    <message>
+        <source>Type:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Status:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation type="unfinished">Закрытый</translation>
+    </message>
+    <message>
+        <source>Trace</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Other</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show All Boxes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save to file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save trace log to file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to open log file for writing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation type="unfinished">Неизвестно</translation>
     </message>
 </context>
 <context>
@@ -2733,7 +2822,11 @@ Please note that this values are currently user specific and saved globally for 
     </message>
     <message>
         <source>Recover to...</source>
-        <translation>Восстановить в...</translation>
+        <translation type="vanished">Восстановить в...</translation>
+    </message>
+    <message>
+        <source>Recover target:</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2757,6 +2850,10 @@ Please note that this values are currently user specific and saved globally for 
     <message>
         <source>Run Outside the Sandbox</source>
         <translation>Запустить вне песочницы</translation>
+    </message>
+    <message>
+        <source>Sandbox</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
