@@ -1,8 +1,6 @@
 #ifndef _RULES_H
 #define _RULES_H
 
-
-#include <ntifs.h>
 #include "driver.h"
 
 #define RULES_TRUE 1

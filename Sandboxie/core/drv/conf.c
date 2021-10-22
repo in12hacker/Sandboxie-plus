@@ -451,6 +451,12 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
         linenum = 0;
     }
 
+	//
+	// read Json rules
+	//
+
+	Json_Conf_Read(&data, session_id);
+
     //
     // if read successfully, replace existing configuration
     //
@@ -468,7 +474,6 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
 
                 pool = Conf_Data.pool;
                 memcpy(&Conf_Data, &data, sizeof(CONF_DATA));
-                Json_Conf_Read(&Conf_Data, session_id);
                 done = TRUE;
             }
 
