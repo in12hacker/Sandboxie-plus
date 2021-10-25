@@ -113,7 +113,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Native</SubSystem>
-      <AdditionalDependencies>ntoskrnl.lib;hal.lib;wmilib.lib;fltmgr.lib;Ksecdd.lib;Fwpkclnt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ntoskrnl.lib;hal.lib;wmilib.lib;fltmgr.lib;Ksecdd.lib;Fwpkclnt.lib;$(DDK_LIB_PATH)/ntstrsafe.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
       <RandomizedBaseAddress>
       </RandomizedBaseAddress>
@@ -316,6 +316,7 @@
     </ClCompile>
     <ClCompile Include="api.c" />
     <ClCompile Include="box.c" />
+    <ClCompile Include="cJSON.c" />
     <ClCompile Include="conf.c" />
     <ClCompile Include="conf_expand.c" />
     <ClCompile Include="conf_user.c" />
@@ -406,6 +407,7 @@
     <ClCompile Include="process_low.c" />
     <ClCompile Include="process_util.c" />
     <ClCompile Include="log_buff.c" />
+    <ClCompile Include="rules.c" />
     <ClCompile Include="session.c" />
     <ClCompile Include="syscall.c" />
     <ClCompile Include="syscall_32.c">
@@ -483,6 +485,7 @@
     <ClInclude Include="api_defs.h" />
     <ClInclude Include="api_flags.h" />
     <ClInclude Include="box.h" />
+    <ClInclude Include="cJSON.h" />
     <ClInclude Include="conf.h" />
     <ClInclude Include="dll.h" />
     <ClInclude Include="driver.h" />
@@ -498,6 +501,7 @@
     <ClInclude Include="obj.h" />
     <ClInclude Include="process.h" />
     <ClInclude Include="log_buff.h" />
+    <ClInclude Include="rules.h" />
     <ClInclude Include="session.h" />
     <ClInclude Include="syscall.h" />
     <ClInclude Include="thread.h" />

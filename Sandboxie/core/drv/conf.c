@@ -67,7 +67,7 @@ typedef struct _CONF_DATA {
     BOOLEAN home;       // TRUE if configuration read from Driver_Home_Path
     ULONG encoding;     // 0 - unicode, 1 - utf8, 2 - unicode (byte swaped)
     volatile ULONG use_count;
-
+	cJSON* box_list;
 } CONF_DATA;
 
 
@@ -198,6 +198,106 @@ _FX void Conf_AdjustUseCount(BOOLEAN increase)
 
     ExReleaseResourceLite(Conf_Lock);
     KeLowerIrql(irql);
+}
+
+
+//---------------------------------------------------------------------------
+// Json_Conf_Read
+//---------------------------------------------------------------------------
+
+
+_FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
+{
+	static const WCHAR* path_rulejson = L"%s\\rule.json";
+	static const WCHAR* SystemRoot = L"\\SystemRoot";
+	NTSTATUS status;
+	CONF_DATA data;
+	WCHAR linenum_str[32];
+	ULONG path_len;
+	WCHAR* path = NULL;
+	BOOLEAN path_home;
+	STREAM* stream;
+    conf_data->box_list = NULL;
+	//
+	// allocate a buffer large enough for \SystemRoot\rule.json
+	// or (Home Path)\rule.json
+	//
+
+	path_len = 32;      // room for \SystemRoot
+	if (path_len < wcslen(Driver_HomePathDos) * sizeof(WCHAR))
+		path_len = wcslen(Driver_HomePathDos) * sizeof(WCHAR);
+	path_len += 64;     // room for \Sandboxie.ini
+
+	path = ExAllocatePoolWithTag(PagedPool, path_len, tzuk);
+	if (!path)
+		return STATUS_INSUFFICIENT_RESOURCES;
+
+	//
+	// open the configuration file, try both places, home first
+	//
+
+	path_home = TRUE; //  = FALSE;
+	RtlStringCbPrintfW(path, path_len, path_rulejson, Driver_HomePathDos); // , SystemRoot);
+
+	status = Stream_OpenEx(
+		&stream, path, FILE_GENERIC_READ, 0, FILE_SHARE_READ, FILE_OPEN, 0);
+
+	if (status == STATUS_OBJECT_NAME_NOT_FOUND) {
+
+		path_home = FALSE; // = TRUE;
+		RtlStringCbPrintfW(path, path_len, path_rulejson, SystemRoot); // , Driver_HomePathDos);
+
+		status = Stream_OpenEx(
+			&stream, path,
+			FILE_GENERIC_READ, 0, FILE_SHARE_READ, FILE_OPEN, 0);
+	}
+
+	if (!NT_SUCCESS(status)) {
+
+		if (status == STATUS_OBJECT_NAME_NOT_FOUND ||
+			status == STATUS_OBJECT_PATH_NOT_FOUND)
+		{
+			wcscpy(linenum_str, L"(Json)");
+			Log_Status_Ex_Session(MSG_CONF_NO_FILE, 0, status, linenum_str, session_id);
+		}
+		else {
+			wcscpy(linenum_str, L"(none)");
+			Log_Status_Ex_Session(
+				MSG_CONF_READ, 0, status, linenum_str, session_id);
+		}
+	}
+
+	if (!NT_SUCCESS(status)) {
+		ExFreePoolWithTag(path, tzuk);
+		return status;
+	}
+
+	//
+	// read data from the file
+	//
+
+	ULONG ulEncode;
+	status = Stream_Read_BOM_Ex(stream, &ulEncode);
+
+	if (NT_SUCCESS(status))
+	{
+		if (ulEncode != 1)
+		{
+			UNICODE_STRING uni_oldstr;
+			RtlInitUnicodeString(&uni_oldstr, (PCWSTR)Get_BOM(stream));
+			ANSI_STRING ani;
+			RtlUnicodeStringToAnsiString(&ani, &uni_oldstr, TRUE);
+			conf_data->box_list = cJSON_Parse(ani.Buffer);
+			RtlFreeAnsiString(&ani);
+		}
+		else
+			conf_data->box_list = cJSON_Parse(Get_BOM(stream));
+	}
+	
+
+	Stream_Close(stream);
+
+	return status;
 }
 
 
@@ -351,6 +451,12 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
         linenum = 0;
     }
 
+	//
+	// read Json rules
+	//
+
+	Json_Conf_Read(&data, session_id);
+
     //
     // if read successfully, replace existing configuration
     //
@@ -368,7 +474,6 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
 
                 pool = Conf_Data.pool;
                 memcpy(&Conf_Data, &data, sizeof(CONF_DATA));
-
                 done = TRUE;
             }
 
@@ -1281,6 +1386,61 @@ _FX const WCHAR *Conf_Get(
 
 
 //---------------------------------------------------------------------------
+// Json_Conf_Get
+//---------------------------------------------------------------------------
+
+
+_FX cJSON* Json_Conf_Get(const WCHAR* section, const WCHAR* setting)
+{
+	cJSON* value;
+	BOOLEAN have_section;
+	BOOLEAN have_setting;
+	BOOLEAN check_global;
+	BOOLEAN skip_tmpl;
+	KIRQL irql;
+
+	value = NULL;
+	have_section = (section && section[0]);
+	have_setting = (setting && setting[0]);
+
+	KeRaiseIrql(APC_LEVEL, &irql);
+	ExAcquireResourceSharedLite(Conf_Lock, TRUE);
+
+	if (Conf_Data.box_list)
+	{
+		int len = cJSON_GetArraySize(Conf_Data.box_list);
+		for (int i = 0; i < len; i++)
+		{
+			cJSON* boxItem = cJSON_GetArrayItem(Conf_Data.box_list, i);
+			cJSON* boxName = cJSON_GetObjectItem(boxItem, "boxname");
+			char* name = boxName->string;
+			if (name)
+			{
+				ANSI_STRING ani_temp;
+				RtlInitAnsiString(&ani_temp, name);
+				UNICODE_STRING uni;
+				RtlAnsiStringToUnicodeString(&uni, &ani_temp, TRUE);
+				if (wcscmp(uni.Buffer, section) == 0)
+				{
+                    ANSI_STRING ani;
+                    UNICODE_STRING uni_temp;
+                    RtlInitUnicodeString(&uni_temp, setting);
+                    RtlUnicodeStringToAnsiString(&ani, &uni_temp, TRUE);
+                    value = cJSON_GetObjectItem(boxItem, ani.Buffer);
+                    RtlFreeAnsiString(&ani);
+				}
+				RtlFreeUnicodeString(&uni);
+			}
+		}
+	}
+	ExReleaseResourceLite(Conf_Lock);
+	KeLowerIrql(irql);
+
+	return value;
+}
+
+
+//---------------------------------------------------------------------------
 // Conf_Get_Boolean
 //---------------------------------------------------------------------------
 
@@ -1443,6 +1603,12 @@ _FX NTSTATUS Conf_Api_Reload(PROCESS *proc, ULONG64 *parms)
 
         if (pool)
             Pool_Delete(pool);
+
+		if (Conf_Data.box_list)
+		{
+			cJSON_Delete(Conf_Data.box_list);
+			Conf_Data.box_list = NULL;
+		}
 
         status = STATUS_SUCCESS;
     }
@@ -1677,6 +1843,12 @@ _FX void Conf_Unload(void)
         Pool_Delete(Conf_Data.pool);
         Conf_Data.pool = NULL;
     }
+
+	if (Conf_Data.box_list)
+	{
+		cJSON_Delete(Conf_Data.box_list);
+		Conf_Data.box_list = NULL;
+	}
 
     Mem_FreeLockResource(&Conf_Lock);
 }

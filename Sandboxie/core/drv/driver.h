@@ -42,6 +42,7 @@
 #include "common/ntproto.h"
 #include "log.h"
 #include "mem.h"
+#include "cJSON.h"
 
 #define NTSTRSAFE_LIB
 #include <ntstrsafe.h>

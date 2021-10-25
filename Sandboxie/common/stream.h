@@ -50,6 +50,14 @@ NTSTATUS Stream_Open(
     IN  ULONG CreateDisposition,
     IN  ULONG CreateOptions);
 
+NTSTATUS Stream_OpenEx(
+	OUT STREAM** out_stream,
+	IN  const WCHAR* FullPath,
+	IN  ACCESS_MASK DesiredAccess,
+	IN  ULONG FileAttributes,
+	IN  ULONG ShareAccess,
+	IN  ULONG CreateDisposition,
+	IN  ULONG CreateOptions);
 #endif
 
 void Stream_Close(
@@ -66,7 +74,7 @@ NTSTATUS Stream_Read_Bytes(
 NTSTATUS Stream_Write_Bytes(
     IN  STREAM *stream,
     IN  ULONG len,
-    IN  UCHAR *v);
+    OUT  UCHAR *v);
 
 NTSTATUS Stream_Read_Short(
     IN  STREAM *stream,
@@ -88,6 +96,10 @@ NTSTATUS Stream_Read_BOM(
     IN  STREAM* stream, 
     ULONG* encoding);
 
+NTSTATUS Stream_Read_BOM_Ex(
+	IN  STREAM* stream,
+	ULONG* encoding);
+
 NTSTATUS Stream_Read_Wchar(
     IN  STREAM* stream,
     OUT USHORT* v);
@@ -96,6 +108,8 @@ ULONG Read_BOM(
     UCHAR** data, 
     ULONG* len);
 
+UCHAR* Get_BOM(
+    IN STREAM* steam);
 //---------------------------------------------------------------------------
 
 #endif // _MY_STREAM_H
