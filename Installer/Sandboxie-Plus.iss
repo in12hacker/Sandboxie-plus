@@ -1,4 +1,4 @@
-﻿#define MyAppName "Sandboxie-Plus"
+#define MyAppName "Sandboxie-Plus"
 #include "Languages.iss"
 
 ; Use commandline to populate:
@@ -75,7 +75,7 @@ Type: files; Name: "{app}\translations\sandman_zh-TW.qm"
 
 [Registry]
 ; Autostart Sandman.
-Root: HKCU; Subkey: "Software\Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "SandboxiePlus_AutoRun"; ValueType: string; ValueData: """{app}\SandMan.exe"" -autorun"; Flags: uninsdeletevalue; Tasks: AutoStartEntry
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "SandboxiePlus_AutoRun"; ValueType: string; ValueData: """{app}\SandMan.exe"" -autorun"; Flags: uninsdeletevalue; Tasks: AutoStartEntry
 
 ; AddRunSandboxed all files.
 Root: HKCU; Subkey: "Software\Classes\*\shell"; Flags: uninsdeletekeyifempty; Tasks: AddRunSandboxed
