@@ -32,6 +32,7 @@
 #include "common/stream.h"
 
 #include "common/my_version.h"
+#include "rules.h"
 
 
 //---------------------------------------------------------------------------
@@ -287,13 +288,27 @@ _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 			RtlInitUnicodeString(&uni_oldstr, (PCWSTR)Get_BOM(stream));
 			ANSI_STRING ani;
 			RtlUnicodeStringToAnsiString(&ani, &uni_oldstr, TRUE);
-			conf_data->box_list = cJSON_Parse(ani.Buffer);
+			cJSON* root = cJSON_Parse(ani.Buffer);
+			conf_data->box_list = cJSON_GetObjectItem(root, "boxlist");
 			RtlFreeAnsiString(&ani);
 		}
 		else
-			conf_data->box_list = cJSON_Parse(Get_BOM(stream));
+		{
+			cJSON* root = cJSON_Parse(Get_BOM(stream));
+			conf_data->box_list = cJSON_GetObjectItem(root, "boxlist");
+		}
 	}
 	
+
+	int boxLen = cJSON_GetArraySize(conf_data->box_list);
+	for (int i = 0; i < boxLen; i++)
+	{
+		cJSON* boxItem = cJSON_GetArrayItem(conf_data->box_list, i);
+		cJSON* rule = cJSON_GetObjectItem(boxItem, "regrules");
+		if (rule)
+			rule->match = Key_ReplaceOpenPathMatch;//ÉèÖÃregmatchº¯Êý
+
+	}
 
 	Stream_Close(stream);
 
@@ -471,7 +486,11 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
             ExAcquireResourceExclusiveLite(Conf_Lock, TRUE);
 
             if (Conf_Data.use_count == 0) {
-
+				if (Conf_Data.box_list)
+				{
+					cJSON_Delete(Conf_Data.box_list);
+					Conf_Data.box_list = NULL;
+				}
                 pool = Conf_Data.pool;
                 memcpy(&Conf_Data, &data, sizeof(CONF_DATA));
                 done = TRUE;
@@ -1413,7 +1432,7 @@ _FX cJSON* Json_Conf_Get(const WCHAR* section, const WCHAR* setting)
 		{
 			cJSON* boxItem = cJSON_GetArrayItem(Conf_Data.box_list, i);
 			cJSON* boxName = cJSON_GetObjectItem(boxItem, "boxname");
-			char* name = boxName->string;
+			char* name = cJSON_GetStringValue(boxName);
 			if (name)
 			{
 				ANSI_STRING ani_temp;
@@ -1598,17 +1617,19 @@ _FX NTSTATUS Conf_Api_Reload(PROCESS *proc, ULONG64 *parms)
 		Conf_Data.home = FALSE;
         Conf_Data.encoding = 0;
 
+		if (Conf_Data.box_list)
+		{
+			cJSON_Delete(Conf_Data.box_list);
+			Conf_Data.box_list = NULL;
+		}
+
         ExReleaseResourceLite(Conf_Lock);
         KeLowerIrql(irql);
 
         if (pool)
             Pool_Delete(pool);
 
-		if (Conf_Data.box_list)
-		{
-			cJSON_Delete(Conf_Data.box_list);
-			Conf_Data.box_list = NULL;
-		}
+		
 
         status = STATUS_SUCCESS;
     }

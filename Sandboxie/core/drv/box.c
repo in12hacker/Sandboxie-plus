@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2004-2020 Sandboxie Holdings, LLC 
  *
  * This program is free software: you can redistribute it and/or modify
@@ -44,6 +44,249 @@ static BOOLEAN Box_InitPaths(POOL *pool, BOX *box);
 static BOOLEAN Box_ExpandString(
     BOX *box, const WCHAR *model, const WCHAR *suffix,
     WCHAR **path, ULONG *path_len);
+
+static BOOLEAN Box_Init_keyValue(BOX* box);
+
+static  NTSTATUS Json_Init_Reg(cJSON* rule,BOX*box);
+//---------------------------------------------------------------------------
+// Json_Reg_Init
+//---------------------------------------------------------------------------
+
+
+_FX NTSTATUS Json_Init_Reg(cJSON* rules, BOX* box)
+{
+	int rulesLen = cJSON_GetArraySize(rules);
+	OBJECT_ATTRIBUTES obj;
+	OBJECT_ATTRIBUTES HiveFile;
+	UNICODE_STRING uRegistryPath;
+
+
+	UNICODE_STRING uRegDatPath;
+	UNICODE_STRING uni;
+	OBJECT_ATTRIBUTES objattrs;
+	HANDLE handle;
+	WCHAR* _HiveFileName=L"\\RegHive";
+	
+	
+	RtlInitUnicodeString(&uni, L"\\??\\C:");
+	InitializeObjectAttributes(&objattrs,
+		&uni, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
+
+	// ZwLoadKey can fail with device path if current process' devicemap is null
+	// One workaround is to call ObOpenObjectByName and it will trigger devicemap
+	// to be initialized. Note, Using C: is not necessary. The disk volume doesn't
+	// need to be there.L"\\??\\A:" works in the tests.
+
+	ULONG hive_path_len = box->file_path_len + wcslen(_HiveFileName) * sizeof(WCHAR);
+	WCHAR* hive_path = Mem_Alloc(Driver_Pool, hive_path_len);
+	if (!hive_path)
+	{
+		return STATUS_SUCCESS;
+	}
+
+	memcpy(hive_path,box->file_path,box->file_path_len);
+	wcscat(hive_path, _HiveFileName);
+	if (STATUS_SUCCESS == ObOpenObjectByName(
+		&objattrs, *IoFileObjectType, KernelMode, NULL, 0, NULL, &handle))
+	{
+		ZwClose(handle);
+	}
+	RtlInitUnicodeString(&uRegistryPath, box->key_path);
+	RtlInitUnicodeString(&uRegDatPath, hive_path);
+	
+	InitializeObjectAttributes(&obj, &uRegistryPath, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
+	InitializeObjectAttributes(&HiveFile, &uRegDatPath, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
+	
+	NTSTATUS status = ZwLoadKey(&obj, &HiveFile);
+	if (!NT_SUCCESS(status))
+	{
+
+		return status;
+	}
+
+	for (int i = 0; i < rulesLen; i++)
+	{
+		cJSON* rule = cJSON_GetArrayItem(rules, i);
+		cJSON* pathObj = cJSON_GetObjectItem(rule, "path");
+		cJSON* keyObj = cJSON_GetObjectItem(rule, "key");
+		cJSON* valueObj = cJSON_GetObjectItem(rule, "value");
+		cJSON* typeObj = cJSON_GetObjectItem(rule, "type");
+		ANSI_STRING ansiPath;
+		ANSI_STRING ansiKey;
+		ANSI_STRING ansiValue;
+		UNICODE_STRING uniPath;
+		UNICODE_STRING uniKey;
+		UNICODE_STRING uniValue;
+		OBJECT_ATTRIBUTES target;
+		HANDLE handle;
+		NTSTATUS status;
+		DWORD Des;
+		DWORD valueSize = 0;
+		unsigned long long  valueData = 0;
+
+		if (pathObj && keyObj && valueObj && typeObj)
+		{
+			char* path = cJSON_GetStringValue(pathObj);
+			char* key = cJSON_GetStringValue(keyObj);
+			__int64 type = cJSON_GetNumber64Value(typeObj);
+			if (path && key)
+			{
+				RtlInitAnsiString(&ansiPath, path);
+				RtlAnsiStringToUnicodeString(&uniPath, &ansiPath, TRUE);
+				InitializeObjectAttributes(&target, &uniPath, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
+				status = ZwCreateKey(&handle, KEY_ALL_ACCESS, &target, 0, 0, REG_OPTION_NON_VOLATILE, &Des);
+				RtlFreeUnicodeString(&uniPath);
+				if (!NT_SUCCESS(status))
+					return status;
+				switch (type)
+				{
+				case REG_SZ:
+				{
+					char* value = cJSON_GetStringValue(valueObj);
+					RtlInitAnsiString(&ansiValue, value);
+					RtlAnsiStringToUnicodeString(&uniValue, &ansiValue, TRUE);
+					RtlInitAnsiString(&ansiValue, key);
+					RtlAnsiStringToUnicodeString(&uniKey, &ansiValue, TRUE);
+					status = ZwSetValueKey(handle, &uniKey, 0, REG_BINARY, uniValue.Buffer, uniValue.Length * sizeof(WCHAR) + sizeof(WCHAR));
+					RtlFreeUnicodeString(&uniValue);
+					RtlFreeUnicodeString(&uniKey);
+					break;
+				}
+				case REG_DWORD:
+				{
+					unsigned long data = (unsigned long)cJSON_GetNumberValue(valueObj);
+					status = ZwSetValueKey(handle, &uniKey, 0, REG_BINARY, &data, sizeof(data));
+					break;
+				}
+				case REG_QWORD:
+				{
+					unsigned long long data = cJSON_GetNumber64Value(valueObj);
+					status = ZwSetValueKey(handle, &uniKey, 0, REG_BINARY, &data, sizeof(data));
+					break;
+				}
+				default:
+					break;
+				}
+				ZwClose(handle);
+			}
+		}
+	}
+	status = ZwUnloadKey(&obj);
+	
+	return STATUS_SUCCESS;
+}
+
+//---------------------------------------------------------------------------
+// Key_GetSandboxPath2
+//---------------------------------------------------------------------------
+
+#define HEADER_USER L"\\REGISTRY\\USER\\"
+#define HEADER_MACHINE L"\\REGISTRY\\MACHINE\\"
+#define USERS   L"S-1-5-21"
+#define CLASSES L"_Classes"
+#define MAX_USER_SID_SIZE  128 //in bytes
+
+WCHAR* Key_GetSandboxPath2(PUNICODE_STRING KeyName, BOX* box)
+{
+
+	WCHAR* targetName = NULL;
+	ULONG targetFound = 0;
+	ULONG nSize;
+
+	if (KeyName)
+	{
+		ULONG path_len = wcslen(box->key_path);
+		nSize = KeyName->Length + (path_len << 1) + (wcslen(L"\\user\\current_classes") << 1);
+		targetName = (WCHAR*)ExAllocatePoolWithTag(NonPagedPool, nSize + sizeof(WCHAR), tzuk);
+		if (targetName)
+		{
+			ULONG head_len = wcslen(HEADER_USER);
+			WCHAR* temp = NULL;
+			memset(targetName, 0, nSize + sizeof(WCHAR));
+			wcsncpy(targetName, box->key_path, path_len);
+			// starts with "\REGISTRY\USER\"
+			if (!wcsncmp(KeyName->Buffer, HEADER_USER, head_len))
+			{
+				temp = wcsstr(&KeyName->Buffer[head_len], L"\\");
+				if (temp)
+				{
+					// Matches "\REGISTRY\USER\S-1-5-21*\"
+					if (!_wcsnicmp(&KeyName->Buffer[head_len], USERS, wcslen(USERS)))
+					{
+						ULONG sidSize = (ULONG)temp - (ULONG)&KeyName->Buffer[head_len];
+						if (sidSize < MAX_USER_SID_SIZE)
+						{
+							// Matches "\REGISTRY\USER\S-1-5-21*_Classes\"
+							if (!_wcsnicmp(temp - wcslen(CLASSES), L"_Classes", wcslen(CLASSES)))
+							{
+								wcscpy(targetName + path_len, L"\\user\\current_classes");
+								path_len += wcslen(L"\\user\\current_classes");
+							}
+							else
+							{
+								wcscpy(targetName + path_len, L"\\user\\current");
+								path_len += wcslen(L"\\user\\current");
+							}
+							wcscpy(targetName + path_len, temp);
+							targetFound = 1;
+						}
+					}
+				}
+			}
+			// starts with "\REGISTRY\\MACHINE\"
+			else if (!_wcsnicmp(KeyName->Buffer, HEADER_MACHINE, wcslen(HEADER_MACHINE)))
+			{
+				wcscpy(targetName + path_len, KeyName->Buffer + 9);
+				targetFound = 1;
+			}
+
+			if (!targetFound)
+			{
+				ExFreePoolWithTag(targetName, tzuk);
+				targetName = NULL;
+			}
+		}
+	}
+
+	return targetName;
+}
+
+//---------------------------------------------------------------------------
+// Box_Init_keyValue  初始化注册表值
+//---------------------------------------------------------------------------
+
+_FX BOOLEAN Box_Init_keyValue(BOX* box)
+{
+	ANSI_STRING ansi;
+	UNICODE_STRING uni;
+	WCHAR* target;
+	if (box->js_regrules)
+	{
+		int relusLen = cJSON_GetArraySize(box->js_regrules);
+		for (int i = 0; i < relusLen; i++)
+		{
+			cJSON* rule = cJSON_GetArrayItem(box->js_regrules, i);
+			cJSON* path = cJSON_GetObjectItem(rule, "path");
+			char* key = cJSON_GetStringValue(path);
+			if (key)
+			{
+				RtlInitAnsiString(&ansi, key);
+				RtlAnsiStringToUnicodeString(&uni, &ansi,TRUE);
+				target = Key_GetSandboxPath2(&uni, box);
+				RtlFreeUnicodeString(&uni);
+				if (target)
+				{
+					RtlInitUnicodeString(&uni, target);
+					RtlUnicodeStringToAnsiString(&ansi, &uni,TRUE);
+					cJSON_SetValuestring(path, ansi.Buffer);
+					RtlFreeAnsiString(&ansi);
+				}
+			}
+		}
+	}
+	return TRUE;
+}
+
 
 
 //---------------------------------------------------------------------------
@@ -192,6 +435,9 @@ _FX BOX *Box_Create(POOL *pool, const WCHAR *boxname, BOOLEAN init_paths)
         box = Box_CreateEx(
                 pool, boxname, SidString.Buffer, SessionId, init_paths);
         RtlFreeUnicodeString(&SidString);
+		box->js_regrules = Json_Conf_Get(box->name, L"regrules");
+		Box_Init_keyValue(box);
+		Json_Init_Reg(box->js_regrules,box);
 
     } else {
 

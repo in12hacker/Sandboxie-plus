@@ -11,4 +11,6 @@ BOOLEAN Rules_Base_Match(const void* Src, const void* Dest);
 
 BOOLEAN Rules_Reg_Match(const void* Src, const void* Dest);
 
+cJSON* Key_ReplaceOpenPathMatch(cJSON* regrules, WCHAR* dst);
+
 #endif // 

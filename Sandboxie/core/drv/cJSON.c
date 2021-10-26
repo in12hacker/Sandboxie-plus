@@ -1,4 +1,4 @@
-/*
+ï»¿/*
   Copyright (c) 2009-2017 Dave Gamble and cJSON contributors
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -107,25 +107,307 @@ int __CRTDECL sscanf(
     return _Result;
 }
 
+const ULONG AsciiSpaceMask = (1 << (' ' - 1)) |
+(1 << ('\t' - 1)) |   // 9: HT - horizontal tab
+(1 << ('\n' - 1)) |   // 10: LF - line feed
+(1 << ('\v' - 1)) |   // 11: VT - vertical tab
+(1 << ('\f' - 1)) |   // 12: FF - form feed
+(1 << ('\r' - 1));  // 13: CR - carriage return
+
+inline BOOLEAN ascii_isspace(UCHAR c)
+{
+	return c >= 1U && c <= 32U && (AsciiSpaceMask) >> (ULONG)(c - 1) & 1U;
+}
+
 
 //_Check_return_
 //_ACRTIMP double __cdecl strtod(
 //    _In_z_                   char const * _String,
 //    _Out_opt_ _Deref_post_z_ char ** _EndPtr
-//) 
-double __cdecl strtod(const char * strSource, char ** endptr)
-/*
-ÐèÒª×Ô¼ºÊµÏÖ£¬Çý¶¯Ò»°ã²»ÓÃ¸¡µãÊý¡£
-ÒªÓÃ¸¡µãÊý»¹µÃÒ»Ð©ÌØÊâµÄ´úÂë¼¼ÇÉ¡£
+//)
+#define _STRTOD_RESTRICT_EXP 1
+#define _STRTOD_RESTRICT_DIGITS  1
+#if _STRTOD_RESTRICT_DIGITS
+#define MAX_SIG_DIGITS 20
+#define EXP_DENORM_ADJUST MAX_SIG_DIGITS
+#define DBL_MIN_10_EXP   (-307) 
+#define MAX_ALLOWED_EXP (MAX_SIG_DIGITS  + EXP_DENORM_ADJUST - DBL_MIN_10_EXP)
+#endif
+static int _isdigit_(int c) { return (c >= '0' && c <= '9'); }
+static int _isxdigit_(int c) { return (_isdigit_(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); }
+static int _isspace_(int ch) { return (unsigned int)(ch - 9) < 5u || ch == ' '; }
 
-²Î¿¼£º\Win2K3\NT\base\crts\crtw32\convert\strtod.c
+double __cdecl my_strtod_(const char * strSource, char ** endptr)
+/*
+éœ€è¦è‡ªå·±å®žçŽ°ï¼Œé©±åŠ¨ä¸€èˆ¬ä¸ç”¨æµ®ç‚¹æ•°ã€‚
+è¦ç”¨æµ®ç‚¹æ•°è¿˜å¾—ä¸€äº›ç‰¹æ®Šçš„ä»£ç æŠ€å·§ã€‚
+
+å‚è€ƒï¼š\Win2K3\NT\base\crts\crtw32\convert\strtod.c
 */
 {
-    UNREFERENCED_PARAMETER(strSource);
-    UNREFERENCED_PARAMETER(endptr);
+	double number;
+#if _STRTOD_LOG_SCALING
+	double p10;
+#endif
+	char* pos0;
+#if _STRTOD_ENDPTR
+	char* pos1;
+#endif
+	char* pos = (char*)strSource;
+	INT64 exponent_power;
+	int exponent_temp;
+	int negative;
+#if _STRTOD_RESTRICT_DIGITS || _STRTOD_ENDPTR
+	int num_digits;
+#endif
 
-    return 0;
+	while (_isspace_(*pos)) {	/* skip leading whitespace */
+		++pos;
+	}
+
+	negative = 0;
+	switch (*pos) {		/* handle optional sign */
+	case '-': negative = 1;	/* fall through to increment position */
+	case '+': ++pos;
+	}
+
+	number = 0.;
+#if _STRTOD_RESTRICT_DIGITS || _STRTOD_ENDPTR
+	num_digits = -1;
+#endif
+	exponent_power = 0;
+	pos0 = NULL;
+
+LOOP:
+	while (_isdigit_(*pos)) {	/* process string of digits */
+#if _STRTOD_RESTRICT_DIGITS
+		if (num_digits < 0) {	/* first time through? */
+			++num_digits;	/* we've now seen a digit */
+		}
+		if (num_digits || (*pos != '0')) { /* had/have nonzero */
+			++num_digits;
+			if (num_digits <= MAX_SIG_DIGITS) { /* is digit significant */
+				number = number * 10. + (*pos - '0');
+			}
+		}
+#else
+#if _STRTOD_ENDPTR
+		++num_digits;
+#endif
+		number = number * 10. + (*pos - '0');
+#endif
+		++pos;
+	}
+
+	if ((*pos == '.') && !pos0) { /* is this the first decimal point? */
+		pos0 = ++pos;		/* save position of decimal point */
+		goto LOOP;		/* and process rest of digits */
+	}
+
+#if _STRTOD_ENDPTR
+	if (num_digits < 0) {		/* must have at least one digit */
+		pos = (char*)str;
+		goto DONE;
+	}
+#endif
+
+#if _STRTOD_RESTRICT_DIGITS
+	if (num_digits > MAX_SIG_DIGITS) { /* adjust exponent for skipped digits */
+		exponent_power += num_digits - MAX_SIG_DIGITS;
+	}
+#endif
+
+	if (pos0) {
+		exponent_power += pos0 - pos; /* adjust exponent for decimal point */
+	}
+
+	if (negative) {		/* correct for sign */
+		number = -number;
+		negative = 0;		/* reset for exponent processing below */
+	}
+
+	/* process an exponent string */
+	if (*pos == 'e' || *pos == 'E') {
+#if _STRTOD_ENDPTR
+		pos1 = pos;
+#endif
+		switch (*++pos) {	/* handle optional sign */
+		case '-': negative = 1;	/* fall through to increment pos */
+		case '+': ++pos;
+		}
+
+		pos0 = pos;
+		exponent_temp = 0;
+		while (_isdigit_(*pos)) {	/* process string of digits */
+#if _STRTOD_RESTRICT_EXP
+			if (exponent_temp < MAX_ALLOWED_EXP) { /* overflow check */
+				exponent_temp = exponent_temp * 10 + (*pos - '0');
+			}
+#else
+			exponent_temp = exponent_temp * 10 + (*pos - '0');
+#endif
+			++pos;
+		}
+
+#if _STRTOD_ENDPTR
+		if (pos == pos0) {	/* were there no digits? */
+			pos = pos1;		/* back up to e|E */
+		} /* else */
+#endif
+		if (negative) {
+			exponent_power -= exponent_temp;
+		}
+		else {
+			exponent_power += exponent_temp;
+		}
+	}
+
+#if _STRTOD_ZERO_CHECK
+	if (number == 0.) {
+		goto DONE;
+	}
+#endif
+
+	/* scale the result */
+#if _STRTOD_LOG_SCALING
+	exponent_temp = exponent_power;
+	p10 = 10.;
+
+	if (exponent_temp < 0) {
+		exponent_temp = -exponent_temp;
+	}
+
+	while (exponent_temp) {
+		if (exponent_temp & 1) {
+			if (exponent_power < 0) {
+				number /= p10;
+			}
+			else {
+				number *= p10;
+			}
+		}
+		exponent_temp >>= 1;
+		p10 *= p10;
+	}
+#else
+	while (exponent_power) {
+		if (exponent_power < 0) {
+			number /= 10.;
+			exponent_power++;
+		}
+		else {
+			number *= 10.;
+			exponent_power--;
+		}
+	}
+#endif
+
+// #if _STRTOD_ERRNO
+// 	if (_zero_or_inf_check(number)) {
+// 		__set_errno(ERANGE);
+// 	}
+// #endif
+
+#if _STRTOD_ENDPTR
+	DONE :
+	if (endptr) {
+		*endptr = pos;
+	}
+#endif
+
+	return number;
 }
+
+////////////////////////
+
+#define ULONG_MAX     0xffffffffUL
+#define LLONG_MAX     9223372036854775807i64
+#define LLONG_MIN   (-9223372036854775807i64 - 1)
+#define ULLONG_MAX    0xffffffffffffffffui64
+#define EINVAL          22
+#define ERANGE          34
+
+inline long long
+my_strtoll_(const char* nptr, char** endptr, int base)
+{
+	const char* s;
+	unsigned long long acc = 0;
+	char c;
+	unsigned long long cutoff;
+	int neg, any, cutlim;
+
+	/*
+	 * Skip white space and pick up leading +/- sign if any.
+	 * If base is 0, allow 0x for hex and 0 for octal, else
+	 * assume decimal; if base is already 16, allow 0x.
+	 */
+	s = nptr;
+	do {
+		c = *s++;
+	} while (ascii_isspace(c));
+	if (c == '-') {
+		neg = 1;
+		c = *s++;
+	}
+	else {
+		neg = 0;
+		if (c == '+')
+			c = *s++;
+	}
+	if ((base == 0 || base == 16) &&
+		c == '0' && (*s == 'x' || *s == 'X') &&
+		((s[1] >= '0' && s[1] <= '9') ||
+			(s[1] >= 'A' && s[1] <= 'F') ||
+			(s[1] >= 'a' && s[1] <= 'f'))) {
+		c = s[1];
+		s += 2;
+		base = 16;
+	}
+	if (base == 0)
+		base = c == '0' ? 8 : 10;
+	acc = any = 0;
+
+	if (base < 2 || base > 36)
+		acc = LLONG_MIN;
+
+	cutoff = neg ? (unsigned long long) - (LLONG_MIN + LLONG_MAX) + LLONG_MAX
+		: LLONG_MAX;
+	cutlim = cutoff % base;
+	cutoff /= base;
+	for (; ; c = *s++) {
+		if (c >= '0' && c <= '9')
+			c -= '0';
+		else if (c >= 'A' && c <= 'Z')
+			c -= 'A' - 10;
+		else if (c >= 'a' && c <= 'z')
+			c -= 'a' - 10;
+		else
+			break;
+		if (c >= base)
+			break;
+		if (any < 0 || acc > cutoff || (acc == cutoff && c > cutlim))
+			any = -1;
+		else {
+			any = 1;
+			acc *= base;
+			acc += c;
+		}
+	}
+	if (any < 0) {
+		acc = neg ? LLONG_MIN : LLONG_MAX;
+	}
+/*
+	else if (!any) {
+	noconv:
+		errno = EINVAL;
+	}*/
+// 	else if (neg)
+// 		acc = -acc;
+	if (endptr != NULL)
+		*endptr = (char*)(any ? s - 1 : nptr);
+	return (acc);
+}
+////////////////////////
 
 
 __declspec(noalias)
@@ -203,6 +485,15 @@ CJSON_PUBLIC(double) cJSON_GetNumberValue(const cJSON * const item)
     return item->valuedouble;
 }
 
+
+CJSON_PUBLIC(ULONG64) cJSON_GetNumber64Value(const cJSON* const item)
+{
+	if (!cJSON_IsLong64(item)) {
+		return 0;
+	}
+
+	return item->valuelong64;
+}
 
 /* This is a safeguard to prevent copy-pasters from using incompatible C and header files */
 #if (CJSON_VERSION_MAJOR != 1) || (CJSON_VERSION_MINOR != 7) || (CJSON_VERSION_PATCH != 15)
@@ -378,6 +669,8 @@ typedef struct
 static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_buffer)
 {
     double number = 0;
+	ULONG64 ullnumber = 0;
+	BOOLEAN isdouble = false;
     unsigned char * after_end = NULL;
     unsigned char number_c_string[64];
     unsigned char decimal_point = get_decimal_point();
@@ -402,15 +695,19 @@ static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_bu
         case '7':
         case '8':
         case '9':
+			number_c_string[i] = buffer_at_offset(input_buffer)[i];
+			break;
         case '+':
         case '-':
         case 'e':
         case 'E':
+			isdouble = true;
             number_c_string[i] = buffer_at_offset(input_buffer)[i];
             break;
 
         case '.':
             number_c_string[i] = decimal_point;
+			isdouble = true;
             break;
 
         default:
@@ -420,22 +717,26 @@ static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_bu
 loop_end:
     number_c_string[i] = '\0';
 
-    number = strtod((const char *)number_c_string, (char **)&after_end);
-    if (number_c_string == after_end) {
-        return false; /* parse_error */
-    }
-
-    item->valuedouble = number;
-
-    /* use saturation in case of overflow */
-    if (number >= INT_MAX) {
-        item->valueint = INT_MAX;
-    } else if (number <= (double)INT_MIN) {
-        item->valueint = INT_MIN;
-    } else {
-        item->valueint = (int)number;
-    }
-
+	if (isdouble)
+	{
+		/*item->valuedouble = NAN;
+		number = my_strtod_((const char*)number_c_string, (char**)&after_end);
+		if (number_c_string == after_end) {
+			return false; / * parse_error * /
+		}
+		item->valuedouble = number;*/
+	}
+	else
+	{
+		/* use saturation in case of overflow */
+		item->valuelong64 = 0;
+		ullnumber = my_strtoll_((const char*)number_c_string, (char**)&after_end, 0);
+		if (number_c_string == after_end) {
+			return false; /* parse_error */
+		}
+		item->valuelong64 = ullnumber;
+	}
+	
     item->type = cJSON_Number;
 
     input_buffer->offset += (size_t)(after_end - number_c_string);
@@ -446,11 +747,11 @@ loop_end:
 CJSON_PUBLIC(double) cJSON_SetNumberHelper(cJSON * object, double number)
 {
     if (number >= INT_MAX) {
-        object->valueint = INT_MAX;
+        object->valuelong64 = INT_MAX;
     } else if (number <= (double)INT_MIN) {
-        object->valueint = INT_MIN;
+        object->valuelong64 = INT_MIN;
     } else {
-        object->valueint = (int)number;
+        object->valuelong64 = (int)number;
     }
 
     return object->valuedouble = number;
@@ -1285,7 +1586,7 @@ static cJSON_bool parse_value(cJSON * const item, parse_buffer * const input_buf
     /* true */
     if (can_read(input_buffer, 4) && (strncmp((const char *)buffer_at_offset(input_buffer), "true", 4) == 0)) {
         item->type = cJSON_True;
-        item->valueint = 1;
+        item->valuelong64 = 1;
         input_buffer->offset += 4;
         return true;
     }
@@ -2270,11 +2571,11 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateNumber(double num)
 
         /* use saturation in case of overflow */
         if (num >= INT_MAX) {
-            item->valueint = INT_MAX;
+            item->valuelong64 = INT_MAX;
         } else if (num <= (double)INT_MIN) {
-            item->valueint = INT_MIN;
+            item->valuelong64 = INT_MIN;
         } else {
-            item->valueint = (int)num;
+            item->valuelong64 = (int)num;
         }
     }
 
@@ -2520,7 +2821,7 @@ CJSON_PUBLIC(cJSON *) cJSON_Duplicate(const cJSON * item, cJSON_bool recurse)
     }
     /* Copy over all vars */
     newitem->type = item->type & (~cJSON_IsReference);
-    newitem->valueint = item->valueint;
+    newitem->valuelong64 = item->valuelong64;
     newitem->valuedouble = item->valuedouble;
     if (item->valuestring) {
         newitem->valuestring = (char *)cJSON_strdup((unsigned char *)item->valuestring, &global_hooks);
@@ -2749,6 +3050,15 @@ CJSON_PUBLIC(cJSON_bool) cJSON_IsRaw(const cJSON * const item)
     }
 
     return (item->type & 0xFF) == cJSON_Raw;
+}
+
+cJSON_IsLong64(const cJSON* const item)
+{
+	if (item == NULL) {
+		return false;
+	}
+
+	return (item->type & 0xFF) == cJSON_Long64;
 }
 
 CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * const b, const cJSON_bool case_sensitive)
