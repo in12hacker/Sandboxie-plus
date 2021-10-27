@@ -285,5 +285,8 @@
     <Filter Include="json">
       <UniqueIdentifier>{a41ca2dc-3efd-4c24-8225-03826d146969}</UniqueIdentifier>
     </Filter>
+    <Filter Include="infhook">
+      <UniqueIdentifier>{ba0dc77f-4b35-42f4-9fb3-b6572ee06ac3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

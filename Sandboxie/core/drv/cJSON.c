@@ -488,7 +488,8 @@ CJSON_PUBLIC(double) cJSON_GetNumberValue(const cJSON * const item)
 
 CJSON_PUBLIC(ULONG64) cJSON_GetNumber64Value(const cJSON* const item)
 {
-	if (!cJSON_IsLong64(item)) {
+	if (!cJSON_IsLong64(item))
+	{
 		return 0;
 	}
 
@@ -724,7 +725,8 @@ loop_end:
 		if (number_c_string == after_end) {
 			return false; / * parse_error * /
 		}
-		item->valuedouble = number;*/
+		item->valuedouble = number;
+		item->type = cJSON_Number;*/
 	}
 	else
 	{
@@ -735,9 +737,10 @@ loop_end:
 			return false; /* parse_error */
 		}
 		item->valuelong64 = ullnumber;
+		item->type = cJSON_Long64;
 	}
 	
-    item->type = cJSON_Number;
+    
 
     input_buffer->offset += (size_t)(after_end - number_c_string);
     return true;
@@ -3058,7 +3061,7 @@ cJSON_IsLong64(const cJSON* const item)
 		return false;
 	}
 
-	return (item->type & 0xFF) == cJSON_Long64;
+	return (item->type & 0xFFFF) == cJSON_Long64;
 }
 
 CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * const b, const cJSON_bool case_sensitive)
