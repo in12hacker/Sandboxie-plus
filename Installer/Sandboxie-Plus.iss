@@ -107,8 +107,8 @@ Filename: "{app}\KmdUtil.exe"; Parameters: "install SbieSvc ""{app}\SbieSvc.exe"
 Filename: "{app}\KmdUtil.exe"; Parameters: "start SbieSvc"; StatusMsg: "KmdUtil start SbieSvc"; Check: not IsPortable
 
 ; Start the Sandman UI.
-;Filename: "{app}\SandMan.exe"; Parameters: "-autorun"; StatusMsg: "Launch SandMan UI..."; Flags: postinstall nowait; Check: not IsPortable
-Filename: "{app}\SandMan.exe"; Parameters: "-autorun"; StatusMsg: "Launch SandMan UI..."; Flags: runasoriginaluser nowait; Check: not IsPortable
+Filename: "{app}\SandMan.exe"; Parameters: "-autorun"; StatusMsg: "Launch SandMan UI..."; Flags: postinstall nowait; Check: not IsPortable
+;Filename: "{app}\SandMan.exe"; Parameters: "-autorun"; StatusMsg: "Launch SandMan UI..."; Flags: runasoriginaluser nowait; Check: not IsPortable
 
 
 [UninstallDelete]
@@ -498,6 +498,11 @@ begin
       IDABORT: TaskRet := 3;
       IDYES: TaskRet := 1;
       IDNO: TaskRet := 2;
+    end;
+
+    if TaskRet > 1 then begin
+      Log('Debug: Taskkill /IM Sandman.exe /F');
+      Exec(ExpandConstant('{sys}\taskkill.exe'), '/IM Sandman.exe /F', '', SW_HIDE, ewWaitUntilTerminated, ExecRet);
     end;
 
     if TaskRet > 2 then begin
