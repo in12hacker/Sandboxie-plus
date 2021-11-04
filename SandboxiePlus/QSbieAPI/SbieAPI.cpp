@@ -135,7 +135,7 @@ void EnableToken(LPCTSTR lpName)
 	CloseHandle(hToken);
 }
 
-LONG RegLoadKey(HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpFile)
+LONG MyRegLoadKey(HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpFile)
 {
 	LONG err = ERROR_FILE_NOT_FOUND;
 
@@ -149,7 +149,7 @@ LONG RegLoadKey(HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpFile)
 	return err;
 }
 
-LONG RegUnLoadKey(HKEY hKey, LPCTSTR lpSubKey)
+LONG MyRegUnLoadKey(HKEY hKey, LPCTSTR lpSubKey)
 {
 	LONG err = ERROR_FILE_NOT_FOUND;
 
