@@ -120,6 +120,45 @@ time_t FILETIME2time(quint64 fileTime)
 	return FILETIME2ms(fileTime) / 1000ULL;
 }
 
+void EnableToken(LPCTSTR lpName)
+{
+	HANDLE hToken;
+	TOKEN_PRIVILEGES NewToken;
+	NewToken.PrivilegeCount = 1;
+	NewToken.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+	LookupPrivilegeValue(NULL, lpName, &NewToken.Privileges[0].Luid);
+	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken);
+
+	AdjustTokenPrivileges(hToken, FALSE, &NewToken, NULL, NULL, NULL);
+
+	CloseHandle(hToken);
+}
+
+LONG RegLoadKey(HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpFile)
+{
+	LONG err = ERROR_FILE_NOT_FOUND;
+
+	EnableToken(SE_BACKUP_NAME);
+	EnableToken(SE_RESTORE_NAME);
+
+	RegUnLoadKey(hKey, lpSubKey);
+
+	err = RegLoadKey(hKey, lpSubKey, lpFile);
+
+	return err;
+}
+
+LONG RegUnLoadKey(HKEY hKey, LPCTSTR lpSubKey)
+{
+	LONG err = ERROR_FILE_NOT_FOUND;
+
+	EnableToken(SE_BACKUP_NAME);
+	EnableToken(SE_RESTORE_NAME);
+
+	err = RegUnLoadKey(hKey, lpSubKey);
+	return err;
+}
 
 CSbieAPI::CSbieAPI(QObject* parent) : QThread(parent)
 {
