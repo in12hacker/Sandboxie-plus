@@ -200,6 +200,9 @@
     <ClCompile Include="..\..\common\str_util.c">
       <Filter>common</Filter>
     </ClCompile>
+    <ClCompile Include="cJSON.c">
+      <Filter>cjson</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="advapi.h" />
@@ -269,6 +272,9 @@
     <ClInclude Include="..\..\common\ntproto.h">
       <Filter>common</Filter>
     </ClInclude>
+    <ClInclude Include="cJSON.h">
+      <Filter>cjson</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource.rc" />
@@ -323,6 +329,9 @@
     </Filter>
     <Filter Include="net">
       <UniqueIdentifier>{bbd6a003-d74d-405a-bd10-e2fea62301f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cjson">
+      <UniqueIdentifier>{154d0504-6b66-4544-9c02-062b59e1a435}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

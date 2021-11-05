@@ -35,7 +35,7 @@ typedef long NTSTATUS;
 #include "sbiedll.h"
 #include "common/defines.h"
 #include "common/list.h"
-
+#include "cJSON.h"
 extern __declspec(dllexport) int __CRTDECL Sbie_snwprintf(wchar_t *_Buffer, size_t Count, const wchar_t * const _Format, ...);
 extern __declspec(dllexport) int __CRTDECL Sbie_snprintf(char *_Buffer, size_t Count, const char * const _Format, ...);
 

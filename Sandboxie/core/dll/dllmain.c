@@ -124,6 +124,9 @@ const WCHAR *DllName_mscoree    = L"mscoree.dll";
 const WCHAR *DllName_ntmarta    = L"ntmarta.dll";
 
 
+cJSON* g_deviceConfig = NULL;
+
+
 //---------------------------------------------------------------------------
 // DllMain
 //---------------------------------------------------------------------------
@@ -164,6 +167,12 @@ _FX BOOL WINAPI DllMain(
 
             File_DoAutoRecover(TRUE);
             Gui_ResetClipCursor();
+
+			if (g_deviceConfig)
+			{
+				cJSON_Delete(g_deviceConfig);
+				g_deviceConfig = NULL;
+			}
         }
     }
 
@@ -760,6 +769,55 @@ _FX ULONG_PTR Dll_Ordinal1(
 
         Dll_InitInjected();
 
+		if (g_deviceConfig)
+		{
+			cJSON_Delete(g_deviceConfig);
+			g_deviceConfig = NULL;
+		}
+
+		g_deviceConfig = NULL;
+ 		static WCHAR* fileName = L"C:\\Windows\\rule.json";
+ 		HANDLE hFile = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+ 		if (hFile != INVALID_HANDLE_VALUE)
+ 		{
+ 			DWORD fileSize = GetFileSize(hFile, NULL);
+ 
+ 			if (fileSize != INVALID_FILE_SIZE)
+ 			{
+ 				LPVOID buff = Dll_AllocTemp(fileSize+2);
+ 				DWORD readedSize = 0;
+ 				if (buff)
+ 				{
+ 					ReadFile(hFile, buff, fileSize, &readedSize, NULL);
+					if (readedSize == fileSize)
+					{
+						cJSON* data = cJSON_Parse(buff);
+						cJSON* boxList = cJSON_GetObjectItem(data, "boxlist");
+						int boxLen = cJSON_GetArraySize(data);
+						for (int i = 0; i < boxLen; i++)
+						{
+							cJSON* boxItem = cJSON_GetArrayItem(boxList, i);
+							cJSON* nameItem = cJSON_GetObjectItem(boxItem, "boxname");
+							char* name = cJSON_GetStringValue(nameItem);
+
+							wchar_t* pUnicode = NULL;
+							int nWideCharLen = 0;
+							nWideCharLen = MultiByteToWideChar(CP_ACP, 0, name, -1, NULL, 0);
+							pUnicode = (wchar_t*)Dll_AllocTemp(nWideCharLen * sizeof(wchar_t));
+							if (pUnicode)
+							{
+								MultiByteToWideChar(CP_ACP, 0, name, -1, pUnicode, nWideCharLen * sizeof(wchar_t));
+								if (name && Dll_BoxName && wcscmp(Dll_BoxName, pUnicode) == 0)
+									g_deviceConfig = boxItem;
+								Dll_Free(pUnicode);
+							}
+						}
+					}
+					Dll_Free(buff);
+ 				}
+ 			}
+ 			CloseHandle(hFile);
+ 		}
         if (Dll_ImageType != DLL_IMAGE_SANDBOXIE_RPCSS) {
             heventProcessStart = CreateEvent(0, FALSE, FALSE, SESSION_PROCESS);
             if (heventProcessStart) {
