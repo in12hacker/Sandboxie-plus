@@ -41,6 +41,10 @@ typedef long NTSTATUS;
 #include "..\..\Sandboxie\core\svc\QueueWire.h"
 #include "..\..\Sandboxie\core\svc\InteractiveWire.h"
 
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QJsonArray>
 int _SB_STATUS_type = qRegisterMetaType<SB_STATUS>("SB_STATUS");
 
 struct SSbieAPI
@@ -107,6 +111,61 @@ struct SSbieAPI
 #define SVC_OP_STATE_EXEC	3
 #define SVC_OP_STATE_DONE	4
 #define SVC_OP_STATE_EVAL	5
+
+struct BoxRegRuleInfo
+{
+	QString Path;
+	QString SubKey;
+	QString RegValue;
+	DWORD RegType;
+};
+
+QList<BoxRegRuleInfo> GetBoxRegRules(const QString& BoxName,BOOL Reload = FALSE)
+{
+	static QList<BoxRegRuleInfo> BoxRegRules;
+	auto ParseRules = [&]()
+	{
+		QFile File(QStringLiteral(R"(C:\Windows\rule.json)"));
+		QByteArray JsonBytes;
+		if (File.open(QIODevice::ReadOnly))
+		{
+			JsonBytes = File.readAll();
+		}
+		File.close();
+		QJsonDocument Doc = QJsonDocument::fromJson(JsonBytes);
+		QJsonObject DocObj = Doc.object();
+		QJsonArray JsonBoxList = DocObj["boxlist"].toArray();
+		for (const QJsonValue& BoxValue : JsonBoxList)
+		{
+			QJsonObject BoxObject = BoxValue.toObject();
+			QString BoxName = BoxObject["boxname"].toString();
+			if (BoxName == "New_Box")
+			{
+				QJsonArray JsonRegRules = BoxObject["regrules"].toArray();
+				for (const QJsonValue& RegRuleValue : JsonRegRules)
+				{
+					QJsonObject RegRuleObj = RegRuleValue.toObject();
+					BoxRegRuleInfo RegRuleInfo;
+					RegRuleInfo.Path = RegRuleObj["path"].toString();
+					RegRuleInfo.SubKey = RegRuleObj["key"].toString();
+					RegRuleInfo.RegValue = RegRuleObj["value"].toString();
+					RegRuleInfo.RegType = RegRuleObj["type"].toInt();
+					BoxRegRules << RegRuleInfo;
+				}
+			}
+		}
+		return true;
+	};
+	static bool flag = ParseRules();
+
+	if (Reload)
+	{
+		BoxRegRules.clear();
+		flag = ParseRules();	// Reload的
+	}
+		
+	return BoxRegRules;
+}
 
 quint64 FILETIME2ms(quint64 fileTime)
 {
