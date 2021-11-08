@@ -122,7 +122,7 @@ struct BoxRegRuleInfo
 
 QList<BoxRegRuleInfo> GetBoxRegRules(const QString& BoxName,BOOL Reload = FALSE)
 {
-	static QList<BoxRegRuleInfo> BoxRegRules;
+	static QMap<QString, QList<BoxRegRuleInfo>> AllBoxRegRules;
 	auto ParseRules = [&]()
 	{
 		QFile File(QStringLiteral(R"(C:\Windows\rule.json)"));
@@ -138,9 +138,10 @@ QList<BoxRegRuleInfo> GetBoxRegRules(const QString& BoxName,BOOL Reload = FALSE)
 		for (const QJsonValue& BoxValue : JsonBoxList)
 		{
 			QJsonObject BoxObject = BoxValue.toObject();
-			QString BoxName = BoxObject["boxname"].toString();
-			if (BoxName == "New_Box")
+			QString _BoxName = BoxObject["boxname"].toString();
+			if (_BoxName == BoxName)
 			{
+				QList<BoxRegRuleInfo>& BoxRegRules = AllBoxRegRules[BoxName];
 				QJsonArray JsonRegRules = BoxObject["regrules"].toArray();
 				for (const QJsonValue& RegRuleValue : JsonRegRules)
 				{
@@ -160,11 +161,11 @@ QList<BoxRegRuleInfo> GetBoxRegRules(const QString& BoxName,BOOL Reload = FALSE)
 
 	if (Reload)
 	{
-		BoxRegRules.clear();
-		flag = ParseRules();	// Reload的
+		AllBoxRegRules.clear();
+		ParseRules();	// Reload的
 	}
 		
-	return BoxRegRules;
+	return AllBoxRegRules[BoxName];
 }
 
 quint64 FILETIME2ms(quint64 fileTime)
