@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 
  * Copyright (c) 2020, David Xanatos
  *
@@ -120,9 +120,54 @@ struct BoxRegRuleInfo
 	DWORD RegType;
 };
 
+void EnableToken(LPCTSTR lpName)
+{
+	HANDLE hToken;
+	TOKEN_PRIVILEGES NewToken;
+	NewToken.PrivilegeCount = 1;
+	NewToken.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+	LookupPrivilegeValue(NULL, lpName, &NewToken.Privileges[0].Luid);
+	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken);
+
+	if (AdjustTokenPrivileges(hToken, FALSE, &NewToken, NULL, NULL, NULL) == 0)
+	{
+		printf("EnableToken Error!");
+	}
+
+	CloseHandle(hToken);
+}
+
+LONG HiveRegLoadKey(HKEY hKey, LPCSTR lpSubKey, LPCSTR lpFile)
+{
+	LONG err = ERROR_FILE_NOT_FOUND;
+
+	EnableToken(SE_BACKUP_NAME);
+	EnableToken(SE_RESTORE_NAME);
+
+	RegUnLoadKeyA(hKey, lpSubKey);
+
+	err = RegLoadKeyA(hKey, lpSubKey, lpFile);
+
+	return err;
+}
+
+LONG HiveRegUnLoadKey(HKEY hKey, LPCSTR lpSubKey)
+{
+	LONG err = ERROR_FILE_NOT_FOUND;
+
+	EnableToken(SE_BACKUP_NAME);
+	EnableToken(SE_RESTORE_NAME);
+
+	err = RegUnLoadKeyA(hKey, lpSubKey);
+
+	return err;
+}
+
 QList<BoxRegRuleInfo> GetBoxRegRules(const QString& BoxName,BOOL Reload = FALSE)
 {
 	static QMap<QString, QList<BoxRegRuleInfo>> AllBoxRegRules;
+	wstring box_name = BoxName.toStdWString();
 	auto ParseRules = [&]()
 	{
 		QFile File(QStringLiteral(R"(C:\Windows\rule.json)"));
@@ -178,46 +223,6 @@ quint64 FILETIME2ms(quint64 fileTime)
 time_t FILETIME2time(quint64 fileTime)
 {
 	return FILETIME2ms(fileTime) / 1000ULL;
-}
-
-void EnableToken(LPCTSTR lpName)
-{
-	HANDLE hToken;
-	TOKEN_PRIVILEGES NewToken;
-	NewToken.PrivilegeCount = 1;
-	NewToken.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-	LookupPrivilegeValue(NULL, lpName, &NewToken.Privileges[0].Luid);
-	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken);
-
-	AdjustTokenPrivileges(hToken, FALSE, &NewToken, NULL, NULL, NULL);
-
-	CloseHandle(hToken);
-}
-
-LONG MyRegLoadKey(HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpFile)
-{
-	LONG err = ERROR_FILE_NOT_FOUND;
-
-	EnableToken(SE_BACKUP_NAME);
-	EnableToken(SE_RESTORE_NAME);
-
-	RegUnLoadKey(hKey, lpSubKey);
-
-	err = RegLoadKey(hKey, lpSubKey, lpFile);
-
-	return err;
-}
-
-LONG MyRegUnLoadKey(HKEY hKey, LPCTSTR lpSubKey)
-{
-	LONG err = ERROR_FILE_NOT_FOUND;
-
-	EnableToken(SE_BACKUP_NAME);
-	EnableToken(SE_RESTORE_NAME);
-
-	err = RegUnLoadKey(hKey, lpSubKey);
-	return err;
 }
 
 CSbieAPI::CSbieAPI(QObject* parent) : QThread(parent)
@@ -1138,6 +1143,7 @@ quint32 CSbieAPI::GetSessionID() const
 SB_STATUS CSbieAPI::ReloadBoxes(bool bFullUpdate)
 {
 	QMap<QString, CSandBoxPtr> OldSandBoxes = m_SandBoxes;
+	GetBoxRegRules(NULL, bFullUpdate);
 
 	for (int i = 0;;i++)
 	{
@@ -1158,6 +1164,8 @@ SB_STATUS CSbieAPI::ReloadBoxes(bool bFullUpdate)
 		}
 		else if(bFullUpdate)
 			UpdateBoxPaths(pBox);
+
+		SetRegHive(BoxName);
 
 		pBox->m_IsEnabled = bIsEnabled;
 
@@ -2032,6 +2040,56 @@ QString CSbieAPI::GetRealPath(const CSandBoxPtr& pBox, const QString& Path)
 	}
 
 	return QString();
+}
+
+SB_STATUS CSbieAPI::SetRegHive(const QString& BoxName, bool Reload)
+{
+	DebugBreak();
+	QList<BoxRegRuleInfo> RuleList = GetBoxRegRules(BoxName, Reload);
+	if (!RuleList.isEmpty())
+	{
+		for (auto it : RuleList)
+		{
+			CSandBoxPtr box = GetBoxByName(BoxName);
+			LONG err = HiveRegLoadKey(HKEY_USERS, BoxName.toStdString().c_str(), (box->m_FilePath + "\\RegHive").toStdString().c_str());
+			if (SUCCEEDED(err))
+			{
+				HKEY key;
+				err = RegCreateKeyA(HKEY_USERS, (BoxName + it.Path).toStdString().c_str(), &key);
+				if (SUCCEEDED(err))
+				{
+					switch (it.RegType)
+					{
+					case REG_SZ:
+					{
+						RegSetValueExA(key, it.SubKey.toStdString().c_str(), 0, REG_SZ, (const BYTE*)it.RegValue.toStdString().c_str(), it.RegValue.toStdString().size());
+						break;
+					}
+					case REG_DWORD:
+					{
+						DWORD x = it.RegValue.toULong();
+						RegSetValueExA(key, it.SubKey.toStdString().c_str(), 0, REG_DWORD, (const BYTE*)&(x), 4);
+						break;
+					}
+					case REG_QWORD:
+					{
+						ULONG64 x = it.RegValue.toULongLong();
+						RegSetValueExA(key, it.SubKey.toStdString().c_str(), 0, REG_QWORD, (const BYTE*)&(x), 8);
+						break;
+					}
+					default:
+						break;
+					}
+					RegCloseKey(key);
+				}
+				HiveRegUnLoadKey(HKEY_USERS, BoxName.toStdString().c_str());
+			}
+		}
+	}
+	else
+		return SB_ERR(ERROR_INVALID_PARAMETER);;
+
+	return SB_OK;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

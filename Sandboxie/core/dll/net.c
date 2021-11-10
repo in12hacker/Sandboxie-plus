@@ -338,7 +338,7 @@ static BOOLEAN    WSA_TraceFlag = FALSE;
 
 //---------------------------------------------------------------------------
 // WSAgethostname
-//---------------------------------------------------------------------------
+//--------------------------------------------------------------------------- 
 static char* localhost = "localhost";
 extern cJSON* g_deviceConfig;
 _FX int WSA_gethostname(char* name,unsigned int len)
@@ -347,10 +347,10 @@ _FX int WSA_gethostname(char* name,unsigned int len)
 	{
 		cJSON * accountNameItem= cJSON_GetObjectItem(g_deviceConfig, "accountname");
 		char* accountName = cJSON_GetStringValue(accountNameItem);
-		if (accountName&&strlen(accountName) < len)
+		if (accountName && strlen(accountName) < len)
 			strcpy_s(name, strlen(accountName) + 1, accountName);
 		else
-			strcpy_s(name, strlen(localhost) + 1, localhost);
+			return __sys_gethostname(name, len);
 	}
 	else
 		return SOCKET_ERROR;

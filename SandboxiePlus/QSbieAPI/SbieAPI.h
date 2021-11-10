@@ -78,6 +78,8 @@ public:
 	virtual QString			GetBoxedPath(const CSandBoxPtr& pBox, const QString& Path);
 	virtual QString			GetRealPath(const CSandBoxPtr& pBox, const QString& Path);
 
+	virtual SB_STATUS		SetRegHive(const QString& BoxName, bool Reload = false);
+
 	enum ESetMode
 	{
 		eIniUpdate = 0,
