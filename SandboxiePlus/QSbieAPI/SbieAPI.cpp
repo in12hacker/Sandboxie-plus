@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 
  * Copyright (c) 2020, David Xanatos
  *
@@ -184,9 +184,9 @@ QList<BoxRegRuleInfo> GetBoxRegRules(const QString& BoxName,BOOL Reload = FALSE)
 		{
 			QJsonObject BoxObject = BoxValue.toObject();
 			QString _BoxName = BoxObject["boxname"].toString();
-			if (_BoxName == BoxName)
+			//if (_BoxName == BoxName)
 			{
-				QList<BoxRegRuleInfo>& BoxRegRules = AllBoxRegRules[BoxName];
+				QList<BoxRegRuleInfo>& BoxRegRules = AllBoxRegRules[_BoxName];
 				QJsonArray JsonRegRules = BoxObject["regrules"].toArray();
 				for (const QJsonValue& RegRuleValue : JsonRegRules)
 				{
