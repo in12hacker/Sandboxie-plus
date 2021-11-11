@@ -203,6 +203,9 @@
     <ClCompile Include="cJSON.c">
       <Filter>cjson</Filter>
     </ClCompile>
+    <ClCompile Include="kernel32.c">
+      <Filter>hook</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="advapi.h" />

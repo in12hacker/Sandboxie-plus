@@ -780,6 +780,7 @@ BOOLEAN Config_String2Bool(const WCHAR* value, BOOLEAN defval);
 
 BOOLEAN Config_GetSettingsForImageName_bool(const WCHAR* setting, BOOLEAN defval);
 
+BOOLEAN Kernel32_Init(HMODULE module);
 //---------------------------------------------------------------------------
 
 

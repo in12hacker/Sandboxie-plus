@@ -316,6 +316,7 @@
     </ClCompile>
     <ClCompile Include="lowlevel_inject.c" />
     <ClCompile Include="lsa.c" />
+    <ClCompile Include="kernel32.c" />
     <ClCompile Include="mscoree.c" />
     <ClCompile Include="net.c" />
     <ClCompile Include="netapi.c" />

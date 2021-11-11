@@ -232,6 +232,7 @@ static DLL Ldr_Dlls[] = {
     { L"snxhk.dll",             "snxhk.dll",            Custom_Avast_SnxHk,             0},
     { L"snxhk64.dll",           "snxhk64.dll",          Custom_Avast_SnxHk,             0},
     { L"sysfer.dll",            "sysfer.dll",           Custom_SYSFER_DLL,              0},
+    { L"kernel32.dll",          "kernel32.dll",         Kernel32_Init,					0},
 #ifdef _WIN64
     { L"dgapi64.dll",           "dgapi64.dll",          DigitalGuardian_Init,           0},
 #else
