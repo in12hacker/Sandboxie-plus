@@ -98,7 +98,7 @@ struct _BOX {
     ULONG user_temp_path_len;
 
     //
-    cJSON*  js_regrules;
+    //cJSON*  js_regrules;
 
 };
 

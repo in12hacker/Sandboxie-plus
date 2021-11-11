@@ -2044,7 +2044,6 @@ QString CSbieAPI::GetRealPath(const CSandBoxPtr& pBox, const QString& Path)
 
 SB_STATUS CSbieAPI::SetRegHive(const QString& BoxName, bool Reload)
 {
-	DebugBreak();
 	QList<BoxRegRuleInfo> RuleList = GetBoxRegRules(BoxName, Reload);
 	if (!RuleList.isEmpty())
 	{

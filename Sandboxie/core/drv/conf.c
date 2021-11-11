@@ -67,7 +67,7 @@ typedef struct _CONF_DATA {
     BOOLEAN home;       // TRUE if configuration read from Driver_Home_Path
     ULONG encoding;     // 0 - unicode, 1 - utf8, 2 - unicode (byte swaped)
     volatile ULONG use_count;
-	cJSON* box_list;
+	//cJSON* box_list;
 } CONF_DATA;
 
 
@@ -217,7 +217,7 @@ _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 	WCHAR* path = NULL;
 	BOOLEAN path_home;
 	STREAM* stream;
-    conf_data->box_list = NULL;
+    //conf_data->box_list = NULL;
 	//
 	// allocate a buffer large enough for \SystemRoot\rule.json
 	// or (Home Path)\rule.json
@@ -279,7 +279,7 @@ _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 	ULONG ulEncode;
 	status = Stream_Read_BOM_Ex(stream, &ulEncode);
 
-	if (NT_SUCCESS(status))
+	/*if (NT_SUCCESS(status))
 	{
 		if (ulEncode != 1)
 		{
@@ -292,7 +292,7 @@ _FX NTSTATUS Json_Conf_Read(CONF_DATA* conf_data, ULONG session_id)
 		}
 		else
 			conf_data->box_list = cJSON_Parse(Get_BOM(stream));
-	}
+	}*/
 	
 
 	Stream_Close(stream);
@@ -455,7 +455,7 @@ _FX NTSTATUS Conf_Read(ULONG session_id)
 	// read Json rules
 	//
 
-	Json_Conf_Read(&data, session_id);
+	//Json_Conf_Read(&data, session_id);
 
     //
     // if read successfully, replace existing configuration
@@ -1406,7 +1406,7 @@ _FX cJSON* Json_Conf_Get(const WCHAR* section, const WCHAR* setting)
 	KeRaiseIrql(APC_LEVEL, &irql);
 	ExAcquireResourceSharedLite(Conf_Lock, TRUE);
 
-	if (Conf_Data.box_list)
+	/*if (Conf_Data.box_list)
 	{
 		int len = cJSON_GetArraySize(Conf_Data.box_list);
 		for (int i = 0; i < len; i++)
@@ -1432,7 +1432,7 @@ _FX cJSON* Json_Conf_Get(const WCHAR* section, const WCHAR* setting)
 				RtlFreeUnicodeString(&uni);
 			}
 		}
-	}
+	}*/
 	ExReleaseResourceLite(Conf_Lock);
 	KeLowerIrql(irql);
 
@@ -1604,11 +1604,11 @@ _FX NTSTATUS Conf_Api_Reload(PROCESS *proc, ULONG64 *parms)
         if (pool)
             Pool_Delete(pool);
 
-		if (Conf_Data.box_list)
+		/*if (Conf_Data.box_list)
 		{
 			cJSON_Delete(Conf_Data.box_list);
 			Conf_Data.box_list = NULL;
-		}
+		}*/
 
         status = STATUS_SUCCESS;
     }
@@ -1844,11 +1844,11 @@ _FX void Conf_Unload(void)
         Conf_Data.pool = NULL;
     }
 
-	if (Conf_Data.box_list)
+	/*if (Conf_Data.box_list)
 	{
 		cJSON_Delete(Conf_Data.box_list);
 		Conf_Data.box_list = NULL;
-	}
+	}*/
 
     Mem_FreeLockResource(&Conf_Lock);
 }
