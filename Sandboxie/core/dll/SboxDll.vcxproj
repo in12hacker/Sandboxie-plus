@@ -294,6 +294,7 @@
     <ClCompile Include="iphlp.c" />
     <ClCompile Include="ipstore_enum.cpp" />
     <ClCompile Include="ipstore_impl.cpp" />
+    <ClCompile Include="kernelbase.c" />
     <ClCompile Include="key.c" />
     <ClCompile Include="key_merge.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='SbieDebug|Win32'">true</ExcludedFromBuild>

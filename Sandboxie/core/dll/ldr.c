@@ -205,13 +205,14 @@ static DLL Ldr_Dlls[] = {
     { L"netapi32.dll",          "netapi32.dll",         NetApi_Init,                    0}, // xp, vista - NetUseAdd
     { L"wkscli.dll",            "wkscli.dll",           NetApi_Init_WksCli,             0}, // win 7 - NetUseAdd
     { L"pstorec.dll",           "pstorec.dll",          Pst_Init,                       0}, // Protected Storage
-    { L"winspool.drv",          "winspool.drv",         Gdi_Init_Spool,                 0}, // print spooler workaround for 32 bit
-    // Disabled functionality:
+    { L"winspool.drv",          "winspool.drv",         Gdi_Init_Spool,                 0}, // print spooler workaround for 32 bit													// Disabled functionality:
     { L"userenv.dll",           "userenv.dll",          UserEnv_Init,                   0}, // disable some GPO stuff
     { L"sfc_os.dll",            "sfc_os.dll",           Sfc_Init,                       0}, // disable SFC
     { L"Pdh.dll",               "Pdh.dll",              Pdh_Init,                       0}, // disable Performance Counters
     { L"wevtapi.dll",           "wevtapi.dll",          EvtApi_Init,                    0}, // disable EvtIntAssertConfig
-    { L"cfgmgr32.dll",          "cfgmgr32.dll",         Setup_Init_CfgMgr32,            0}, // CM_Add_Driver_PackageW
+	{ L"cfgmgr32.dll",          "cfgmgr32.dll",         Setup_Init_CfgMgr32,            0}, // CM_Add_Driver_PackageW
+	{ L"kernel32.dll",          "kernel32.dll",         Kernel32_Init,					0},																								// Disabled functionality:
+	{ L"KernelBase.dll",        "KernelBase.dll",       KernelBase_Init,				0},
     // Workarounds:
     { L"setupapi.dll",          "setupapi.dll",         Setup_Init_SetupApi,            0}, // VerifyCatalogFile
     { L"zipfldr.dll",           "zipfldr.dll",          SH32_Init_ZipFldr,              0},
@@ -232,7 +233,6 @@ static DLL Ldr_Dlls[] = {
     { L"snxhk.dll",             "snxhk.dll",            Custom_Avast_SnxHk,             0},
     { L"snxhk64.dll",           "snxhk64.dll",          Custom_Avast_SnxHk,             0},
     { L"sysfer.dll",            "sysfer.dll",           Custom_SYSFER_DLL,              0},
-    { L"kernel32.dll",          "kernel32.dll",         Kernel32_Init,					0},
 #ifdef _WIN64
     { L"dgapi64.dll",           "dgapi64.dll",          DigitalGuardian_Init,           0},
 #else

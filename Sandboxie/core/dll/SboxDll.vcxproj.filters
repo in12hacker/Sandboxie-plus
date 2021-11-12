@@ -206,6 +206,9 @@
     <ClCompile Include="kernel32.c">
       <Filter>hook</Filter>
     </ClCompile>
+    <ClCompile Include="kernelbase.c">
+      <Filter>hook</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="advapi.h" />
