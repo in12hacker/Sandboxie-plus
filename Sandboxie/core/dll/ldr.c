@@ -205,7 +205,8 @@ static DLL Ldr_Dlls[] = {
     { L"netapi32.dll",          "netapi32.dll",         NetApi_Init,                    0}, // xp, vista - NetUseAdd
     { L"wkscli.dll",            "wkscli.dll",           NetApi_Init_WksCli,             0}, // win 7 - NetUseAdd
     { L"pstorec.dll",           "pstorec.dll",          Pst_Init,                       0}, // Protected Storage
-    { L"winspool.drv",          "winspool.drv",         Gdi_Init_Spool,                 0}, // print spooler workaround for 32 bit													// Disabled functionality:
+    { L"winspool.drv",          "winspool.drv",         Gdi_Init_Spool,                 0}, // print spooler workaround for 32 bit
+    // Disabled functionality:
     { L"userenv.dll",           "userenv.dll",          UserEnv_Init,                   0}, // disable some GPO stuff
     { L"sfc_os.dll",            "sfc_os.dll",           Sfc_Init,                       0}, // disable SFC
     { L"Pdh.dll",               "Pdh.dll",              Pdh_Init,                       0}, // disable Performance Counters
