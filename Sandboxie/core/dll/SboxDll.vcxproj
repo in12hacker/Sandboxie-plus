@@ -289,6 +289,7 @@
     <ClCompile Include="guititle.c" />
     <ClCompile Include="hook_inst.c" />
     <ClCompile Include="hook_tramp.c" />
+    <ClCompile Include="imp.c" />
     <ClCompile Include="includes.c" />
     <ClCompile Include="ipc.c" />
     <ClCompile Include="ipc_start.c">
@@ -375,6 +376,7 @@
     <ClCompile Include="setup.c" />
     <ClCompile Include="sfc.c" />
     <ClCompile Include="sh.c" />
+    <ClCompile Include="stringc.c" />
     <ClCompile Include="support.c" />
     <ClCompile Include="sxs.c" />
     <ClCompile Include="sysinfo.c">
@@ -421,6 +423,7 @@
     <ClInclude Include="guidlg.h" />
     <ClInclude Include="gui_p.h" />
     <ClInclude Include="hook.h" />
+    <ClInclude Include="imp.h" />
     <ClInclude Include="ipstore_enum.h" />
     <ClInclude Include="ipstore_impl.h" />
     <ClInclude Include="obj.h" />
@@ -428,6 +431,7 @@
     <ClInclude Include="pstore.h" />
     <ClInclude Include="sbieapi.h" />
     <ClInclude Include="sbiedll.h" />
+    <ClInclude Include="stringc.h" />
     <ClInclude Include="taskbar.h" />
     <ClInclude Include="trace.h" />
   </ItemGroup>

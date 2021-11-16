@@ -217,6 +217,12 @@
     <ClCompile Include="cred.c">
       <Filter>pst</Filter>
     </ClCompile>
+    <ClCompile Include="imp.c">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="stringc.c">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="advapi.h" />
@@ -292,6 +298,12 @@
     <ClInclude Include="cJSON.h">
       <Filter>cjson</Filter>
     </ClInclude>
+    <ClInclude Include="imp.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="stringc.h">
+      <Filter>utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource.rc" />
@@ -349,6 +361,9 @@
     </Filter>
     <Filter Include="cjson">
       <UniqueIdentifier>{154d0504-6b66-4544-9c02-062b59e1a435}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{2588e8ad-a59e-419b-b237-baff8a921a91}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

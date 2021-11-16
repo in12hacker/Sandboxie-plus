@@ -3,11 +3,13 @@
 
 #include <windows.h>
 #include <stdlib.h>
+#include "imp.h"
 typedef BOOL (*P_GetPhysicallyInstalledSystemMemory)(
 	PULONGLONG TotalMemoryInKilobytes);
 
 static P_GetPhysicallyInstalledSystemMemory        __sys_GetPhysicallyInstalledSystemMemory = NULL;
 extern cJSON* g_deviceConfig;
+
 _FX BOOL Kernel32_GetPhysicallyInstalledSystemMemory(PULONGLONG pTotalMemoryInKilobytes)
 {
 	cJSON* memSizeItem = cJSON_GetObjectItem(g_deviceConfig, "memsize");
@@ -19,12 +21,14 @@ _FX BOOL Kernel32_GetPhysicallyInstalledSystemMemory(PULONGLONG pTotalMemoryInKi
 		return __sys_GetPhysicallyInstalledSystemMemory(pTotalMemoryInKilobytes);
 	return TRUE;
 }
+
 _FX BOOLEAN Kernel32_Init(HMODULE module)
 {
 	P_GetPhysicallyInstalledSystemMemory GetPhysicallyInstalledSystemMemory;
 	GetPhysicallyInstalledSystemMemory = (P_GetPhysicallyInstalledSystemMemory)GetProcAddress(module, "GetPhysicallyInstalledSystemMemory");
 	if (GetPhysicallyInstalledSystemMemory)
 		SBIEDLL_HOOK(Kernel32_, GetPhysicallyInstalledSystemMemory);
-	
+
+	_MultiByteToWideChar = (P_MultiByteToWideChar)GetProcAddress(module, "MultiByteToWideChar");
 	return TRUE;
 }
