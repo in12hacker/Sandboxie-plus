@@ -379,6 +379,5 @@
       <Filter>common</Filter>
     </CustomBuild>
     <CustomBuild Include="..\..\common\NtCRT\x64\ntdll.def" />
-    <CustomBuild Include="..\..\common\NtCRT\x86\ntdll.def" />
   </ItemGroup>
 </Project>

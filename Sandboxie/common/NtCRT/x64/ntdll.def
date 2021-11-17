@@ -169,3 +169,4 @@ wcsstr
 wcstol
 wcstombs
 wcstoul
+_atoi64
