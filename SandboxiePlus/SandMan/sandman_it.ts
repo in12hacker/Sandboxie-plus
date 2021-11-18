@@ -3734,7 +3734,7 @@ Queste opzioni impostano la maschera degli eventi a &quot;*&quot; - tutti gli ev
     <message>
         <location filename="Forms/OptionsWindow.ui" line="2769"/>
         <source>App Templates</source>
-        <translation>Compatibilità applicazioni</translation>
+        <translation>Compartimento applicazioni</translation>
     </message>
     <message>
         <location filename="Forms/OptionsWindow.ui" line="2781"/>

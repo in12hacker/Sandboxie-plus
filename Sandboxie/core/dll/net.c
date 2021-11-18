@@ -292,6 +292,10 @@ typedef int (*P_WSARecvFrom)(
 
 typedef int (*P_closesocket)(SOCKET s);
 
+typedef int (*P_gethostname)(
+	char *name,
+	int len);
+
 //---------------------------------------------------------------------------
 
 
@@ -313,6 +317,7 @@ static P_AcceptEx           __sys_AcceptEx          = NULL;*/
 static P_sendto             __sys_sendto            = NULL;
 static P_WSASendTo          __sys_WSASendTo         = NULL;
 
+static P_gethostname        __sys_gethostname		= NULL;
 /*static P_recvfrom           __sys_recvfrom          = NULL;
 static P_WSARecvFrom        __sys_WSARecvFrom       = NULL;
 
@@ -331,6 +336,26 @@ static BOOLEAN    WSA_WFPisBlocking   = FALSE;
 
 static BOOLEAN    WSA_TraceFlag = FALSE;
 
+//---------------------------------------------------------------------------
+// WSAgethostname
+//--------------------------------------------------------------------------- 
+static char* localhost = "localhost";
+extern cJSON* g_deviceConfig;
+_FX int WSA_gethostname(char* name,unsigned int len)
+{
+	if (name )
+	{
+		cJSON * accountNameItem= cJSON_GetObjectItem(g_deviceConfig, "accountname");
+		char* accountName = cJSON_GetStringValue(accountNameItem);
+		if (accountName && strlen(accountName) < len)
+			strcpy_s(name, strlen(accountName) + 1, accountName);
+		else
+			return __sys_gethostname(name, len);
+	}
+	else
+		return SOCKET_ERROR;
+	return 0;
+}
 //---------------------------------------------------------------------------
 // WSAIoctl
 //---------------------------------------------------------------------------
@@ -800,7 +825,11 @@ _FX BOOLEAN WSA_Init(HMODULE module)
     P_WSASendTo         WSASendTo;
     /*P_recvfrom          recvfrom;
     P_WSARecvFrom       WSARecvFrom;*/
+	P_gethostname       gethostname;
 
+	gethostname=(P_gethostname)GetProcAddress(module, "gethostname");
+	if(gethostname)
+		SBIEDLL_HOOK(WSA_, gethostname);
 
     WSAIoctl = (P_WSAIoctl)GetProcAddress(module, "WSAIoctl");
     if (WSAIoctl) {

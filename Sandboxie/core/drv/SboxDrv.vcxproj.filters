@@ -156,6 +156,12 @@
     <ClCompile Include="dll.c">
       <Filter>syscall</Filter>
     </ClCompile>
+    <ClCompile Include="rules.c">
+      <Filter>rules</Filter>
+    </ClCompile>
+    <ClCompile Include="dll.c">
+      <Filter>syscall</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="api.h" />
@@ -237,6 +243,12 @@
     </ClInclude>
     <ClInclude Include="dll.h">
       <Filter>syscall</Filter>
+    </ClInclude>
+    <ClInclude Include="rules.h">
+      <Filter>rules</Filter>
+    </ClInclude>
+    <ClInclude Include="cJSON.h">
+      <Filter>json</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

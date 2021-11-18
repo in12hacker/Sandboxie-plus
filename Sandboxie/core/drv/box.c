@@ -402,7 +402,7 @@ _FX BOOLEAN Box_InitPaths(POOL *pool, BOX *box)
     //  Init Reg Json Rules
     //
 
-    box->js_regrules = Json_Conf_Get(box->name, L"regrules");
+    //box->js_regrules = Json_Conf_Get(box->name, L"regrules");
 
     return TRUE;
 }
@@ -538,7 +538,7 @@ _FX BOX *Box_Clone(POOL *pool, const BOX *model)
     CLONE_MEMBER(spooler_directory);
     CLONE_MEMBER(system_temp_path);
     CLONE_MEMBER(user_temp_path);
-    box->js_regrules = model->js_regrules;
+    //box->js_regrules = model->js_regrules;
 #undef CLONE_MEMBER
 
     box->session_id = model->session_id;
