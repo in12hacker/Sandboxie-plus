@@ -159,8 +159,8 @@
     <ClCompile Include="rules.c">
       <Filter>rules</Filter>
     </ClCompile>
-    <ClCompile Include="cJSON.c">
-      <Filter>json</Filter>
+    <ClCompile Include="dll.c">
+      <Filter>syscall</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -288,12 +288,6 @@
     </Filter>
     <Filter Include="obj">
       <UniqueIdentifier>{494a34c9-6083-404b-8ae2-d257ad50af60}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="rules">
-      <UniqueIdentifier>{3898b92e-eaa7-45ae-b0f6-875bfb04bc80}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="json">
-      <UniqueIdentifier>{a41ca2dc-3efd-4c24-8225-03826d146969}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

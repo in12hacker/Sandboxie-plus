@@ -3721,7 +3721,7 @@ void CBoxPage::DoPropertySheet(
         sheet.AddPage(&pageBlockNetworkFiles);
     }
 
-    //sheet.AddPage(&pageResourceAccess);
+    sheet.AddPage(&pageResourceAccess);
     sheet.AddPage(&pageOpenFile);
     sheet.AddPage(&pageOpenPipe);
     sheet.AddPage(&pageReadFile);
