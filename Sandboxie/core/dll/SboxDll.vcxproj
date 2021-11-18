@@ -460,6 +460,7 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='SbieDebug|x64'">lib /def:%(FullPath) /out:$(SolutionDir)Bin\$(PlatformName)\$(Configuration)\NtCRT.lib /machine:x64</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='SbieDebug|x64'">$(SolutionDir)Bin\$(PlatformName)\$(Configuration)\NtCRT.lib</Outputs>
     </CustomBuild>
+    <None Include="..\..\common\NtCRT\x86\ntdll.def" />
     <None Include="SboxDll32.def" />
     <None Include="SboxDll64.def" />
     <None Include="util_32.asm">

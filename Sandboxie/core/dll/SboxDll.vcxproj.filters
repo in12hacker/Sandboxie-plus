@@ -324,6 +324,7 @@
     <None Include="util_32.asm">
       <Filter>hook</Filter>
     </None>
+    <None Include="..\..\common\NtCRT\x86\ntdll.def" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scm">

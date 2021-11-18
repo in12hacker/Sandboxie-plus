@@ -25,7 +25,8 @@
 #include "core/svc/IpHlpWire.h"
 #include "dll.h"
 #include "common/my_wsa.h"
-
+#include <iphlpapi.h>
+#include <stdlib.h>
 
 //---------------------------------------------------------------------------
 // Functions
@@ -94,7 +95,7 @@ static ULONG IpHlp_NotifyRouteChange2(ADDRESS_FAMILY Family,
 
 static ULONG IpHlp_CancelMibChangeNotify2(HANDLE NotificationHandle);
 
-
+static ULONG IpHlp_GetAdaptersInfo(PIP_ADAPTER_INFO AdapterInfo, PULONG SizePointer);
 //---------------------------------------------------------------------------
 
 
@@ -148,6 +149,7 @@ typedef ULONG (*P_NotifyRouteChange2)(ADDRESS_FAMILY Family,
 
 typedef ULONG (*P_CancelMibChangeNotify2)(HANDLE NotificationHandle);
 
+typedef  ULONG(*P_GetAdaptersInfo)(PIP_ADAPTER_INFO AdapterInfo, PULONG SizePointer);
 
 //---------------------------------------------------------------------------
 
@@ -164,13 +166,14 @@ static P_Icmp6SendEcho2         __sys_Icmp6SendEcho2            = NULL;
 static P_NotifyRouteChange2     __sys_NotifyRouteChange2        = NULL;
 static P_CancelMibChangeNotify2 __sys_CancelMibChangeNotify2    = NULL;
 
-
+static P_GetAdaptersInfo	__sys_GetAdaptersInfo = NULL;
 //---------------------------------------------------------------------------
 // Variables
 //---------------------------------------------------------------------------
 
 
 static HANDLE IpHlp_DummyEvent = NULL;
+extern cJSON* g_deviceConfig;
 
 
 //---------------------------------------------------------------------------
@@ -189,6 +192,7 @@ _FX BOOLEAN IpHlp_Init(HMODULE module)
     void *Icmp6SendEcho2;
     void *NotifyRouteChange2;
     void *CancelMibChangeNotify2;
+    void *GetAdaptersInfo;
 
     if ((Dll_ProcessFlags & SBIE_FLAG_APP_COMPARTMENT) != 0 || Dll_OsBuild < 6000) { // in compartment mode we have a full token so no need to hook anythign here
 
@@ -210,7 +214,8 @@ _FX BOOLEAN IpHlp_Init(HMODULE module)
 
     NotifyRouteChange2      = GetProcAddress(module, "NotifyRouteChange2");
     CancelMibChangeNotify2  =
-                        GetProcAddress(module, "CancelMibChangeNotify2");
+		GetProcAddress(module, "CancelMibChangeNotify2");
+	GetAdaptersInfo = GetProcAddress(module, "GetAdaptersInfo");
 
     SBIEDLL_HOOK(IpHlp_,IcmpCreateFile);
     SBIEDLL_HOOK(IpHlp_,Icmp6CreateFile);
@@ -219,6 +224,7 @@ _FX BOOLEAN IpHlp_Init(HMODULE module)
     SBIEDLL_HOOK(IpHlp_,IcmpSendEcho);
     SBIEDLL_HOOK(IpHlp_,IcmpSendEcho2);
     SBIEDLL_HOOK(IpHlp_,Icmp6SendEcho2);
+
     if (IcmpSendEcho2Ex) {
         SBIEDLL_HOOK(IpHlp_,IcmpSendEcho2Ex);
     }
@@ -228,6 +234,9 @@ _FX BOOLEAN IpHlp_Init(HMODULE module)
     }
     if (CancelMibChangeNotify2) {
         SBIEDLL_HOOK(IpHlp_,CancelMibChangeNotify2);
+    }
+    if (GetAdaptersInfo) {
+		SBIEDLL_HOOK(IpHlp_, GetAdaptersInfo);
     }
 
     return TRUE;
@@ -592,4 +601,66 @@ _FX ULONG IpHlp_CancelMibChangeNotify2(HANDLE NotificationHandle)
     else
         rv = __sys_CancelMibChangeNotify2(NotificationHandle);
     return rv;
+}
+
+_FX  ULONG IpHlp_GetAdaptersInfo(PIP_ADAPTER_INFO AdapterInfo, PULONG SizePointer)
+{
+	cJSON* jsonItem = cJSON_GetObjectItem(g_deviceConfig, "mac");
+	ULONG dwSize = sizeof(IP_ADAPTER_INFO);	// original size
+
+	if (!SizePointer)
+		return ERROR_INVALID_PARAMETER;
+	
+	if (*SizePointer < dwSize || !AdapterInfo)
+	{
+		*SizePointer = dwSize;
+		return ERROR_BUFFER_OVERFLOW;
+	}
+	ULONG Ret = __sys_GetAdaptersInfo(AdapterInfo, SizePointer);
+	if (jsonItem)
+	{
+		if (Ret == ERROR_BUFFER_OVERFLOW)
+		{
+			// multi net card, copy first , modify mac
+			PIP_ADAPTER_INFO _pAdapterInfo = (IP_ADAPTER_INFO*)Dll_Alloc(*SizePointer);
+			if (_pAdapterInfo)
+			{
+				ULONG dwRet = __sys_GetAdaptersInfo(_pAdapterInfo, SizePointer);
+				if (dwRet == NO_ERROR)
+				{
+					*SizePointer = dwSize; // reset size
+					*AdapterInfo = *_pAdapterInfo;
+					Ret = dwRet;
+				}
+			}
+			Dll_Free(_pAdapterInfo);
+		}
+
+		if (Ret == NO_ERROR)	// only one net card, modify mac
+		{
+			char* sJsonValue = cJSON_GetStringValue(jsonItem);
+			if (sJsonValue)	// max size 8 * 2
+			{
+				int pos = 0;
+				char buf[4] = { 0 };	// one byte >> 3 
+				for (DWORD i = 0; i <= strlen(sJsonValue); i++)
+				{
+					if ((0 == sJsonValue[i])
+						|| (':' == sJsonValue[i]))
+					{
+						unsigned char c = (unsigned char)atol(buf);
+						AdapterInfo->Address[pos++] = c;
+						memset(buf, 0, 4);
+					}
+					else
+					{
+						buf[strlen(buf)] = sJsonValue[i];
+					}
+
+				}
+				AdapterInfo->Next = NULL;
+			}
+		}
+	}
+	return Ret;
 }
