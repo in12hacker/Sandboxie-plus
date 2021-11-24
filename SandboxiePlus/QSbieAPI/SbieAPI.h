@@ -55,7 +55,7 @@ public:
 	virtual void			UpdateDriveLetters();
 	virtual QString			Nt2DosPath(QString NtPath, bool* pOk = NULL) const;
 
-	virtual SB_STATUS		ReloadBoxes(bool bFullUpdate = false);
+	virtual SB_STATUS		ReloadBoxes(bool bFullUpdate = false, bool bHive = false);
 	static  SB_STATUS		ValidateName(const QString& BoxName);
 	virtual SB_STATUS		CreateBox(const QString& BoxName, bool bReLoad = true);
 

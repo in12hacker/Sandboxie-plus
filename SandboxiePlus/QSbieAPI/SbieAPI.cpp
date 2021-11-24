@@ -1142,7 +1142,7 @@ quint32 CSbieAPI::GetSessionID() const
 	return m->sessionId;
 }
 
-SB_STATUS CSbieAPI::ReloadBoxes(bool bFullUpdate)
+SB_STATUS CSbieAPI::ReloadBoxes(bool bFullUpdate, bool bHive)
 {
 	QMap<QString, CSandBoxPtr> OldSandBoxes = m_SandBoxes;
 	GetBoxRegRules(NULL, bFullUpdate);
@@ -1167,7 +1167,8 @@ SB_STATUS CSbieAPI::ReloadBoxes(bool bFullUpdate)
 		else if(bFullUpdate)
 			UpdateBoxPaths(pBox);
 
-		SetRegHive(BoxName);
+		if (bHive)
+			SetRegHive(BoxName);
 
 		pBox->m_IsEnabled = bIsEnabled;
 
@@ -1372,7 +1373,7 @@ SB_STATUS CSbieAPI::CreateBox(const QString& BoxName, bool bReLoad)
 
 	if (bReLoad) {
 		ReloadConfig();
-		ReloadBoxes();
+		ReloadBoxes(false, true);
 	}
 	return Status;
 }
@@ -2125,7 +2126,7 @@ SB_STATUS CSbieAPI::ReloadConf(quint32 flags, quint32 SessionId)
 	//emit LogMessage("Sandboxie config has been reloaded.", false);
 	emit LogSbieMessage(0, QStringList() << "Sandboxie config has been reloaded" << "" << "", 4);
 
-	ReloadBoxes(true);
+	ReloadBoxes(true, true);
 
 	return SB_OK;
 }
